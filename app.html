@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>HiroshiLOID</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+  <style>
+    body { font-family: sans-serif; background: #f4f4f4; padding: 20px; }
+    .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    canvas { border: 1px solid #ccc; margin-bottom: 10px; cursor: crosshair; }
+    input, select, button { padding: 8px; margin: 5px 0; width: 100%; }
+    textarea { width: 100%; height: 100px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HiroshiLOID</h1>
+
+    <h2>1. Crear o Cargar Voicebank</h2>
+    <input type="text" id="vbName" placeholder="Nombre del Voicebank" />
+    <select id="vbGender">
+      <option>Masculino</option>
+      <option>Femenino</option>
+      <option>Neutral</option>
+    </select>
+    <input type="file" id="vbSamples" accept="audio/*" multiple />
+    <input type="file" id="loadVST3" accept=".vst3" onchange="loadVoicebank(event)" />
+
+    <h2>2. Piano Roll</h2>
+    <canvas id="pianoRoll" width="800" height="300"></canvas>
+    <button onclick="clearNotes()">Limpiar Notas</button>
+    <input type="file" id="importProject" accept="application/json" onchange="importProject(this)" />
+
+    <h2>3. Letra de la canción</h2>
+    <textarea id="lyrics" placeholder="Introduce la letra separada por sílabas o notas..."></textarea>
+
+    <h2>4. Controles</h2>
+    <button onclick="playNotes()">Reproducir</button>
+    <button onclick="exportAll()">Crear Voicebank + WAV + ZIP + MIDI + JSON</button>
+
+    <p id="status"></p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("pianoRoll");
+    const ctx = canvas.getContext("2d");
+    let notes = [];
+    let isDrawing = false;
+
+    canvas.addEventListener("mousedown", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const pitch = 127 - Math.floor((y / canvas.height) * 127);
+      const time = Math.floor((x / canvas.width) * 100);
+      notes.push({ pitch, time, duration: 1 });
+      drawNotes();
+    });
+
+    function drawNotes() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const note of notes) {
+        const y = canvas.height - (note.pitch / 127) * canvas.height;
+        const x = (note.time / 100) * canvas.width;
+        ctx.fillStyle = "blue";
+        ctx.fillRect(x, y, 10, 10);
+      }
+    }
+
+    function clearNotes() {
+      notes = [];
+      drawNotes();
+    }
+
+    function playNotes() {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      for (const note of notes) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = 440 * Math.pow(2, (note.pitch - 69) / 12);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const start = audioCtx.currentTime + note.time * 0.1;
+        osc.start(start);
+        osc.stop(start + 0.5);
+      }
+    }
+
+    async function getCanvasAsBlob() {
+      return new Promise(resolve => canvas.toBlob(resolve));
+    }
+
+    async function generateWavBlob() {
+      const sampleRate = 44100;
+      const duration = 2;
+      const buffer = new AudioContext().createBuffer(1, sampleRate * duration, sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i++) {
+        data[i] = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.5;
+      }
+      const wavBlob = new Blob([bufferToWav(buffer)], { type: 'audio/wav' });
+      return wavBlob;
+    }
+
+    function bufferToWav(buffer) {
+      const numOfChan = buffer.numberOfChannels;
+      const length = buffer.length * numOfChan * 2 + 44;
+      const bufferArray = new ArrayBuffer(length);
+      const view = new DataView(bufferArray);
+      const channels = [];
+      let sample, offset = 0, pos = 0;
+
+      function writeString(s) {
+        for (let i = 0; i < s.length; i++) view.setUint8(pos++, s.charCodeAt(i));
+      }
+
+      writeString('RIFF'); pos += 4;  // file length placeholder
+      writeString('WAVE');
+      writeString('fmt '); pos += 4;
+      view.setUint32(pos, 16, true); pos += 4;
+      view.setUint16(pos, 1, true); pos += 2;
+      view.setUint16(pos, numOfChan, true); pos += 2;
+      view.setUint32(pos, buffer.sampleRate, true); pos += 4;
+      view.setUint32(pos, buffer.sampleRate * 2 * numOfChan, true); pos += 4;
+      view.setUint16(pos, numOfChan * 2, true); pos += 2;
+      view.setUint16(pos, 16, true); pos += 2;
+      writeString('data'); pos += 4;
+      view.setUint32(pos, buffer.length * numOfChan * 2, true); pos += 4;
+
+      for (let i = 0; i < buffer.numberOfChannels; i++)
+        channels.push(buffer.getChannelData(i));
+
+      while (pos < length) {
+        for (let i = 0; i < numOfChan; i++) {
+          sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return view;
+    }
+
+    async function exportAll() {
+      const vbName = document.getElementById("vbName").value || "Voicebank";
+      const vbGender = document.getElementById("vbGender").value;
+      const sampleFiles = document.getElementById("vbSamples").files;
+      const sampleNames = Array.from(sampleFiles).map(f => f.name);
+      const zip = new JSZip();
+      const folder = zip.folder("voicebank");
+
+      const averagePitch = notes.length
+        ? Math.round(notes.reduce((acc, n) => acc + n.pitch, 0) / notes.length)
+        : 60;
+
+      const vst3Content = {
+        name: vbName,
+        gender: vbGender,
+        averagePitch,
+        notes,
+        samples: sampleNames
+      };
+      const projectJson = {
+        voicebank: vst3Content,
+        lyrics: document.getElementById("lyrics").value.trim()
+      };
+
+      folder.file("voicebank.vst3", JSON.stringify(vst3Content, null, 2));
+      folder.file("project.json", JSON.stringify(projectJson, null, 2));
+      folder.file("config.json", JSON.stringify({ name: vbName, gender: vbGender }, null, 2));
+      folder.file("readme.md", `# ${vbName}\n\nGénero: ${vbGender}\nSamples: ${sampleNames.join(", ") || "Ninguno"}`);
+
+      const wavBlob = await generateWavBlob();
+      folder.file("output.wav", wavBlob);
+
+      const canvasBlob = await getCanvasAsBlob();
+      folder.file("pianoroll.png", canvasBlob);
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(zipBlob);
+      link.download = `${vbName}_voicebank.zip`;
+      link.click();
+
+      document.getElementById("status").textContent = "Voicebank exportado como ZIP.";
+    }
+
+    function importProject(input) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = JSON.parse(e.target.result);
+        notes = data.voicebank?.notes || [];
+        document.getElementById("lyrics").value = data.lyrics || "";
+        drawNotes();
+      };
+      reader.readAsText(input.files[0]);
+    }
+
+    function loadVoicebank(event) {
+      const file = event.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = JSON.parse(e.target.result);
+        document.getElementById("vbName").value = data.name || "";
+        document.getElementById("vbGender").value = data.gender || "Neutral";
+        notes = data.notes || [];
+        drawNotes();
+        document.getElementById("status").textContent = `Voicebank ${data.name} cargado.`;
+      };
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>
