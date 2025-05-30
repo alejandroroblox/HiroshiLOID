@@ -233,6 +233,8 @@
         </div>
     </div>
 
+    <input type="file" id="fileInput" accept=".hl,.vsqx" class="hidden">
+
     <footer class="bg-white bg-opacity-80 backdrop-blur-sm p-3 rounded-xl shadow-md mt-4 text-center text-sm text-gray-600">
         Estado: <span id="statusMessage" class="font-semibold text-purple-700">Listo para componer...</span>
         <p class="mt-1 text-xs text-red-500">
@@ -348,6 +350,9 @@
         const messageModal = document.getElementById('messageModal');
         const messageModalTitleEl = document.getElementById('messageModalTitle');
         const messageModalContentEl = document.getElementById('messageModalContent');
+
+        // File input element
+        const fileInput = document.getElementById('fileInput');
 
 
         // Helper to convert MIDI note number to frequency for instrumental track
@@ -638,9 +643,13 @@
         }
 
         function showModal(modalId, title = '', content = '') {
-            if (title) messageModalTitleEl.textContent = title;
-            if (content) messageModalContentEl.textContent = content;
-            document.getElementById(modalId).classList.remove('hidden');
+            if (modalId === 'messageModal') {
+                messageModalTitleEl.textContent = title;
+                messageModalContentEl.textContent = content;
+                messageModal.classList.remove('hidden');
+            } else {
+                document.getElementById(modalId).classList.remove('hidden');
+            }
         }
 
         function hideModal(modalId) {
@@ -918,25 +927,25 @@
             saveProject();
         }
 
-        // Project Save/Load (using localStorage)
-        function saveProject() {
+        // Project Save/Load (using localStorage for internal state)
+        // This function is for internal state persistence, not file I/O
+        function saveProjectInternal() {
             try {
                 localStorage.setItem('cevioAiSongProject', JSON.stringify({ tracks, masterVolume, globalPitch, globalDynamics, vibrato, expression, customVoicebanks }));
-                updateStatus('Proyecto guardado localmente.');
+                updateStatus('Estado del proyecto guardado internamente.');
             } catch (error) {
-                console.error('Error al guardar el proyecto:', error);
-                updateStatus('Error al guardar el proyecto.');
+                console.error('Error al guardar el estado interno del proyecto:', error);
+                updateStatus('Error al guardar el estado interno del proyecto.');
             }
         }
 
-        function loadProject() {
+        function loadProjectInternal() {
             try {
                 const savedData = localStorage.getItem('cevioAiSongProject');
                 if (savedData) {
                     const parsedData = JSON.parse(savedData);
                     const loadedTracks = parsedData.tracks || initialTracks;
 
-                    // Merge loaded tracks with initial structure to handle new fields or missing tracks
                     tracks = initialTracks.map(initialTrack => {
                         const loadedTrack = loadedTracks.find(lt => lt.id === initialTrack.id);
                         if (loadedTrack) {
@@ -957,182 +966,100 @@
                     vibrato = parsedData.vibrato !== undefined ? parsedData.vibrato : 30;
                     expression = parsedData.expression !== undefined ? parsedData.expression : 50;
                     customVoicebanks = parsedData.customVoicebanks || [];
-                    updateStatus('Proyecto cargado desde el almacenamiento local.');
+                    updateStatus('Estado del proyecto cargado internamente.');
                 } else {
-                    tracks = JSON.parse(JSON.stringify(initialTracks)); // Deep copy initial tracks
-                    updateStatus('No se encontró ningún proyecto guardado.');
+                    tracks = JSON.parse(JSON.stringify(initialTracks));
+                    updateStatus('No se encontró ningún estado de proyecto interno guardado.');
                 }
-                // Re-render all UI elements after loading
                 renderTrackList();
                 renderNoteInputSection();
                 renderNoteList();
                 updateMasterVolumeUI();
                 updateGlobalParametersUI();
             } catch (error) {
-                console.error('Error al cargar el proyecto:', error);
-                updateStatus('Error al cargar el proyecto.');
+                console.error('Error al cargar el estado interno del proyecto:', error);
+                updateStatus('Error al cargar el estado interno del proyecto.');
             }
         }
 
-        // LLM Functions
-        async function generateLyrics() {
-            if (isGenerating) return;
-            isGenerating = true;
-            showLoading('✨ Generando letra con IA...');
-
-            let chatHistory = [];
-            const prompt = `Genera una línea de letra de canción en español sobre el tema: "${lyricPromptTextEl.value}". La respuesta debe ser solo la línea de letra, sin explicaciones ni formato adicional.`;
-            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            const payload = { contents: chatHistory };
-            const apiKey = ""; // Canvas will provide this in runtime
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const text = result.candidates[0].content.parts[0].text;
-                    newNoteText = text.trim();
-                    document.getElementById('newNoteText').value = newNoteText; // Update input field
-                    updateStatus('✨ Letra generada. ¡Añádela a tu pista!');
-                } else {
-                    updateStatus('Error al generar letra: No se recibió contenido válido.');
-                    console.error('Error al generar letra:', result);
-                }
-            } catch (error) {
-                updateStatus('Error de conexión al generar letra.');
-                console.error('Error de red o API:', error);
-            } finally {
-                isGenerating = false;
-                hideLoading();
-                hideModal('lyricPromptModal');
-                lyricPromptTextEl.value = '';
-            }
+        // File I/O Functions
+        function openProjectFromFile() {
+            fileInput.click(); // Trigger the hidden file input click
         }
 
-        async function suggestMelody() {
-            if (isGenerating) return;
-            isGenerating = true;
-            showLoading('✨ Sugiriendo melodía con IA...');
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                updateStatus('No se seleccionó ningún archivo.');
+                return;
+            }
 
-            let chatHistory = [];
-            const prompt = `Genera una secuencia de 3 a 5 notas MIDI para una melodía de piano con un estado de ánimo "${melodyPromptTextEl.value}". Cada nota debe ser un objeto con 'midiNote' (número entero entre 40 y 80) y 'durationMs' (número entero entre 300 y 1200). Responde solo con un array JSON de estos objetos, sin texto adicional.`;
-            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
-            const payload = {
-                contents: chatHistory,
-                generationConfig: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                "midiNote": { "type": "INTEGER" },
-                                "durationMs": { "type": "INTEGER" }
-                            },
-                            "propertyOrdering": ["midiNote", "durationMs"]
+            const fileName = file.name;
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    if (fileExtension === 'hl') {
+                        const loadedData = JSON.parse(e.target.result);
+                        // Validate and apply loaded data to global state
+                        if (loadedData.tracks && Array.isArray(loadedData.tracks)) {
+                            tracks = loadedData.tracks;
+                            masterVolume = loadedData.masterVolume !== undefined ? loadedData.masterVolume : 70;
+                            globalPitch = loadedData.globalPitch !== undefined ? loadedData.globalPitch : 60;
+                            globalDynamics = loadedData.globalDynamics !== undefined ? loadedData.globalDynamics : 50;
+                            vibrato = loadedData.vibrato !== undefined ? loadedData.vibrato : 30;
+                            expression = loadedData.expression !== undefined ? loadedData.expression : 50;
+                            customVoicebanks = loadedData.customVoicebanks || [];
+
+                            updateStatus(`Proyecto "${fileName}" cargado exitosamente.`);
+                            handleTrackSelect('vocalTrack'); // Re-render UI
+                            saveProjectInternal(); // Save to internal storage after loading
+                        } else {
+                            throw new Error("Formato de archivo .hl inválido.");
                         }
-                    }
-                }
-            };
-            const apiKey = ""; // Canvas will provide this in runtime
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-            try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const jsonString = result.candidates[0].content.parts[0].text;
-                    const suggestedNotes = JSON.parse(jsonString);
-
-                    if (Array.isArray(suggestedNotes) && suggestedNotes.every(n => typeof n.midiNote === 'number' && typeof n.durationMs === 'number')) {
-                        let currentStartTime = (tracks.find(t => t.id === 'pianoTrack')?.notes.reduce((max, note) => Math.max(max, note.startTimeMs + note.durationMs), 0) || 0) + 200;
-
-                        const newMelodyNotes = suggestedNotes.map(note => {
-                            const noteToAdd = {
-                                id: Date.now() + Math.random(),
-                                midiNote: Math.max(40, Math.min(80, note.midiNote)),
-                                startTimeMs: currentStartTime,
-                                durationMs: Math.max(200, Math.min(1200, note.durationMs)),
-                                velocity: globalDynamics,
-                            };
-                            currentStartTime += noteToAdd.durationMs;
-                            return noteToAdd;
-                        });
-
-                        const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
-                        if (pianoTrack) {
-                            pianoTrack.notes.push(...newMelodyNotes);
-                        }
-                        updateStatus('✨ Melodía sugerida y añadida a la pista de piano.');
-                        renderNoteList(); // Re-render note list
-                        saveProject();
+                    } else if (fileExtension === 'vsqx') {
+                        showModal('messageModal', 'Formato no compatible', 'La importación de archivos .vsqx no es compatible con esta simulación debido a la complejidad del formato.');
+                        updateStatus(`No se pudo cargar "${fileName}". Formato .vsqx no compatible.`);
                     } else {
-                        updateStatus('Error al generar melodía: Formato de datos inesperado.');
-                        console.error('Formato de datos inesperado:', suggestedNotes);
+                        showModal('messageModal', 'Formato de archivo no válido', `El archivo "${fileName}" no es un formato de proyecto compatible (.hl o .vsqx).`);
+                        updateStatus(`No se pudo cargar "${fileName}". Formato no válido.`);
                     }
-                } else {
-                    updateStatus('Error al generar melodía: No se recibió contenido válido.');
-                    console.error('Error al generar melodía:', result);
+                } catch (error) {
+                    showModal('messageModal', 'Error al cargar el archivo', `Hubo un error al procesar el archivo: ${error.message}`);
+                    updateStatus(`Error al cargar "${fileName}".`);
+                    console.error('Error loading file:', error);
                 }
-            } catch (error) {
-                updateStatus('Error de conexión al generar melodía.');
-                console.error('Error de red o API:', error);
-            } finally {
-                isGenerating = false;
-                hideLoading();
-                hideModal('melodyPromptModal');
-                melodyPromptTextEl.value = '';
-            }
-        }
-
-        // Custom Voicebank Functions
-        function createVoicebank() {
-            if (newVoicebankNameEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
-                updateStatus('Por favor, completa todos los campos para el banco de voz.');
-                return;
-            }
-
-            const newVoicebank = {
-                id: `custom-voice-${Date.now()}`,
-                name: newVoicebankNameEl.value.trim(),
-                baseVoiceUri: newVoicebankBaseVoiceEl.value,
-                pitchOffset: parseFloat(newVoicebankPitchOffsetEl.value),
-                rateOffset: parseFloat(newVoicebankRateOffsetEl.value),
             };
+            reader.onerror = () => {
+                showModal('messageModal', 'Error de lectura', 'No se pudo leer el archivo.');
+                updateStatus('Error al leer el archivo.');
+            };
+            reader.readAsText(file);
+        });
 
-            customVoicebanks.push(newVoicebank);
-            updateStatus(`Banco de voz "${newVoicebank.name}" creado.`);
-            hideModal('voicebankCreatorModal');
-            newVoicebankNameEl.value = '';
-            newVoicebankPitchOffsetEl.value = 0;
-            newVoicebankRateOffsetEl.value = 0;
-            newVoicebankBaseVoiceEl.value = availableVoices.find(v => v.lang.startsWith('es'))?.voiceURI || availableVoices[0]?.voiceURI || '';
-            renderVoiceSelect(); // Re-render voice select to show new voicebank
-            saveProject();
-        }
+        function saveProjectToFile() {
+            const projectData = {
+                tracks: tracks,
+                masterVolume: masterVolume,
+                globalPitch: globalPitch,
+                globalDynamics: globalDynamics,
+                vibrato: vibrato,
+                expression: expression,
+                customVoicebanks: customVoicebanks
+            };
+            const jsonString = JSON.stringify(projectData, null, 2); // Pretty print JSON
 
-        function playVoicebankSample() {
-            if (voicebankSampleTextEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
-                updateStatus('Introduce texto de muestra y selecciona una voz base.');
-                return;
-            }
-            playTtsUtterance(voicebankSampleTextEl.value, 60, 50, newVoicebankBaseVoiceEl.value);
-            updateStatus('Reproduciendo muestra de voz.');
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mi_proyecto.hl'; // .hl extension for "Harmony Lab" project
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            updateStatus('Proyecto guardado como mi_proyecto.hl');
         }
 
         // WAV Export Function
@@ -1249,19 +1176,19 @@
             }
 
             // Load project on start
-            loadProject();
+            loadProjectInternal(); // Load internal state on startup
 
-            // Attach event listeners
+            // Attach event listeners for main buttons
             document.getElementById('newProjectBtn').addEventListener('click', () => {
                 tracks = JSON.parse(JSON.stringify(initialTracks)); // Reset to initial
                 customVoicebanks = [];
                 updateStatus('Nuevo proyecto creado.');
-                saveProject();
+                saveProjectInternal(); // Save to internal storage
                 handleTrackSelect('vocalTrack'); // Re-select vocal track to refresh UI
             });
-            document.getElementById('openProjectBtn').addEventListener('click', loadProject);
-            document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
-            document.getElementById('exportWavBtn').addEventListener('click', exportToWav);
+            document.getElementById('openProjectBtn').addEventListener('click', openProjectFromFile); // Trigger file input
+            document.getElementById('saveProjectBtn').addEventListener('click', saveProjectToFile); // Trigger file download
+            document.getElementById('exportWavBtn').addEventListener('click', exportToWav); // Trigger WAV download
 
             document.getElementById('playBtn').addEventListener('click', () => handleAction('Play'));
             document.getElementById('stopBtn').addEventListener('click', () => handleAction('Stop'));
@@ -1299,7 +1226,7 @@
                     vocalTrack.selectedVoiceUri = newVoiceUri;
                 }
                 updateStatus(`Voz TTS seleccionada: ${availableVoices.find(v => v.voiceURI === newVoiceUri)?.name || customVoicebanks.find(vb => vb.id === newVoiceUri)?.name || 'Predeterminada'}`);
-                saveProject();
+                saveProjectInternal();
             });
 
             instrumentTypeEl.addEventListener('change', (e) => {
@@ -1309,7 +1236,7 @@
                     pianoTrack.instrumentType = newInstrumentType;
                 }
                 updateStatus(`Tipo de instrumento seleccionado: ${newInstrumentType}`);
-                saveProject();
+                saveProjectInternal();
             });
 
             document.getElementById('createVoicebankBtn').addEventListener('click', () => showModal('voicebankCreatorModal'));
