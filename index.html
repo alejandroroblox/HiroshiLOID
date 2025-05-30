@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HiroshiLOID</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -21,7 +21,7 @@
     <header class="flex flex-col sm:flex-row items-center justify-between bg-white bg-opacity-80 backdrop-blur-sm p-3 sm:p-4 rounded-xl shadow-md mb-4">
         <div class="flex items-center mb-2 sm:mb-0">
             <span class="text-3xl font-bold text-purple-600 mr-2">🎶</span>
-            <h1 class="text-xl sm:text-2xl font-extrabold text-purple-700">CeVIO AI Song (Simulación Avanzada)</h1>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-purple-700"HiroshiLOID</h1>
         </div>
         <nav class="flex flex-wrap justify-center gap-2 sm:gap-3">
             <button id="newProjectBtn" class="flex items-center px-3 py-2 bg-purple-400 hover:bg-purple-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base font-semibold">
@@ -881,7 +881,7 @@
             newNoteStartTime = 0; // Reset for next note
             renderNoteInputSection(); // Update input fields
             renderNoteList(); // Re-render note list
-            saveProject();
+            saveProjectInternal();
         }
 
         function deleteNote(trackId, noteId) {
@@ -891,7 +891,7 @@
             }
             updateStatus('Nota eliminada.');
             renderNoteList();
-            saveProject();
+            saveProjectInternal();
         }
 
         function startEditingNote(trackId, note) {
@@ -924,7 +924,7 @@
             editingNoteId = null;
             updateStatus('Nota editada.');
             renderNoteList();
-            saveProject();
+            saveProjectInternal();
         }
 
         // Project Save/Load (using localStorage for internal state)
@@ -980,6 +980,167 @@
                 console.error('Error al cargar el estado interno del proyecto:', error);
                 updateStatus('Error al cargar el estado interno del proyecto.');
             }
+        }
+
+        // LLM Functions (moved to global scope)
+        async function generateLyrics() {
+            if (isGenerating) return;
+            isGenerating = true;
+            showLoading('✨ Generando letra con IA...');
+
+            let chatHistory = [];
+            const prompt = `Genera una línea de letra de canción en español sobre el tema: "${lyricPromptTextEl.value}". La respuesta debe ser solo la línea de letra, sin explicaciones ni formato adicional.`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will provide this in runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    newNoteText = text.trim();
+                    document.getElementById('newNoteText').value = newNoteText; // Update input field
+                    updateStatus('✨ Letra generada. ¡Añádela a tu pista!');
+                } else {
+                    updateStatus('Error al generar letra: No se recibió contenido válido.');
+                    console.error('Error al generar letra:', result);
+                }
+            } catch (error) {
+                updateStatus('Error de conexión al generar letra.');
+                console.error('Error de red o API:', error);
+            } finally {
+                isGenerating = false;
+                hideLoading();
+                hideModal('lyricPromptModal');
+                lyricPromptTextEl.value = '';
+            }
+        }
+
+        async function suggestMelody() {
+            if (isGenerating) return;
+            isGenerating = true;
+            showLoading('✨ Sugiriendo melodía con IA...');
+
+            let chatHistory = [];
+            const prompt = `Genera una secuencia de 3 a 5 notas MIDI para una melodía de piano con un estado de ánimo "${melodyPromptTextEl.value}". Cada nota debe ser un objeto con 'midiNote' (número entero entre 40 y 80) y 'durationMs' (número entero entre 300 y 1200). Responde solo con un array JSON de estos objetos, sin texto adicional.`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "midiNote": { "type": "INTEGER" },
+                                "durationMs": { "type": "INTEGER" }
+                            },
+                            "propertyOrdering": ["midiNote", "durationMs"]
+                        }
+                    }
+                }
+            };
+            const apiKey = ""; // Canvas will provide this in runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const suggestedNotes = JSON.parse(jsonString);
+
+                    if (Array.isArray(suggestedNotes) && suggestedNotes.every(n => typeof n.midiNote === 'number' && typeof n.durationMs === 'number')) {
+                        let currentStartTime = (tracks.find(t => t.id === 'pianoTrack')?.notes.reduce((max, note) => Math.max(max, note.startTimeMs + note.durationMs), 0) || 0) + 200;
+
+                        const newMelodyNotes = suggestedNotes.map(note => {
+                            const noteToAdd = {
+                                id: Date.now() + Math.random(),
+                                midiNote: Math.max(40, Math.min(80, note.midiNote)),
+                                startTimeMs: currentStartTime,
+                                durationMs: Math.max(200, Math.min(1200, note.durationMs)),
+                                velocity: globalDynamics,
+                            };
+                            currentStartTime += noteToAdd.durationMs;
+                            return noteToAdd;
+                        });
+
+                        const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
+                        if (pianoTrack) {
+                            pianoTrack.notes.push(...newMelodyNotes);
+                        }
+                        updateStatus('✨ Melodía sugerida y añadida a la pista de piano.');
+                        renderNoteList(); // Re-render note list
+                        saveProjectInternal();
+                    } else {
+                        updateStatus('Error al generar melodía: Formato de datos inesperado.');
+                        console.error('Formato de datos inesperado:', suggestedNotes);
+                    }
+                } else {
+                    updateStatus('Error al generar melodía: No se recibió contenido válido.');
+                    console.error('Error al generar melodía:', result);
+                }
+            } catch (error) {
+                updateStatus('Error de conexión al generar melodía.');
+                console.error('Error de red o API:', error);
+            } finally {
+                isGenerating = false;
+                hideLoading();
+                hideModal('melodyPromptModal');
+                melodyPromptTextEl.value = '';
+            }
+        }
+
+        // Custom Voicebank Functions (moved to global scope)
+        function createVoicebank() {
+            if (newVoicebankNameEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
+                updateStatus('Por favor, completa todos los campos para el banco de voz.');
+                return;
+            }
+
+            const newVoicebank = {
+                id: `custom-voice-${Date.now()}`,
+                name: newVoicebankNameEl.value.trim(),
+                baseVoiceUri: newVoicebankBaseVoiceEl.value,
+                pitchOffset: parseFloat(newVoicebankPitchOffsetEl.value),
+                rateOffset: parseFloat(newVoicebankRateOffsetEl.value),
+            };
+
+            customVoicebanks.push(newVoicebank);
+            updateStatus(`Banco de voz "${newVoicebank.name}" creado.`);
+            hideModal('voicebankCreatorModal');
+            newVoicebankNameEl.value = '';
+            newVoicebankPitchOffsetEl.value = 0;
+            newVoicebankRateOffsetEl.value = 0;
+            newVoicebankBaseVoiceEl.value = availableVoices.find(v => v.lang.startsWith('es'))?.voiceURI || availableVoices[0]?.voiceURI || '';
+            renderVoiceSelect(); // Re-render voice select to show new voicebank
+            saveProjectInternal();
+        }
+
+        function playVoicebankSample() {
+            if (voicebankSampleTextEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
+                updateStatus('Introduce texto de muestra y selecciona una voz base.');
+                return;
+            }
+            playTtsUtterance(voicebankSampleTextEl.value, 60, 50, newVoicebankBaseVoiceEl.value);
+            updateStatus('Reproduciendo muestra de voz.');
         }
 
         // File I/O Functions
@@ -1065,9 +1226,11 @@
         // WAV Export Function
         async function exportToWav() {
             updateStatus('Exportando pista instrumental a WAV...');
+            console.log('Iniciando exportación WAV...');
             const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
             if (!pianoTrack || pianoTrack.notes.length === 0) {
                 showModal('messageModal', 'Exportación a WAV', 'No hay notas en la pista de piano para exportar. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
+                console.log('No hay notas de piano para exportar.');
                 return;
             }
 
@@ -1078,25 +1241,47 @@
 
             if (maxDuration === 0) {
                 showModal('messageModal', 'Exportación a WAV', 'No hay audio para exportar. Añade notas a la pista de piano. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
+                console.log('La duración máxima es 0, no hay audio para exportar.');
                 return;
             }
 
+            console.log('Duración máxima:', maxDuration, 'ms');
             const sampleRate = 44100;
             const totalSamples = Math.ceil((maxDuration / 1000) * sampleRate);
-            const offlineAudioContext = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, totalSamples, sampleRate);
+            console.log('Total de muestras:', totalSamples);
 
-            const offlineMasterGain = offlineAudioContext.createGain();
+            let offlineAudioContextInstance;
+            try {
+                offlineAudioContextInstance = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, totalSamples, sampleRate);
+                console.log('OfflineAudioContext creado:', offlineAudioContextInstance);
+            } catch (e) {
+                console.error('Error al crear OfflineAudioContext:', e);
+                showModal('messageModal', 'Error de Audio', `No se pudo crear el contexto de audio offline: ${e.message}`);
+                return;
+            }
+
+            const offlineMasterGain = offlineAudioContextInstance.createGain();
             offlineMasterGain.gain.value = masterVolume / 100;
-            offlineMasterGain.connect(offlineAudioContext.destination);
+            offlineMasterGain.connect(offlineAudioContextInstance.destination);
+            console.log('Nodo de ganancia maestro offline conectado.');
 
             pianoTrack.notes.forEach(note => {
                 const startTimeAudioContext = note.startTimeMs / 1000;
-                playPianoNote(note.midiNote, note.durationMs, note.velocity, startTimeAudioContext, offlineAudioContext);
+                playPianoNote(note.midiNote, note.durationMs, note.velocity, startTimeAudioContext, offlineAudioContextInstance);
+                console.log(`Nota de piano programada: MIDI ${note.midiNote}, Duración ${note.durationMs}ms, Inicio ${note.startTimeMs}ms`);
             });
 
             try {
-                const renderedBuffer = await offlineAudioContext.startRendering();
+                console.log('Iniciando renderizado offline...');
+                const renderedBuffer = await offlineAudioContextInstance.startRendering();
+                console.log('Renderizado completado. Búfer:', renderedBuffer);
+
+                if (renderedBuffer.length === 0) {
+                    throw new Error("El contexto de audio offline ha renderizado un búfer vacío. No se generó sonido.");
+                }
+
                 const audioData = renderedBuffer.getChannelData(0);
+                console.log('Datos de audio recuperados. Longitud:', audioData.length);
 
                 const buffer = new ArrayBuffer(44 + audioData.length * 2);
                 const view = new DataView(buffer);
@@ -1118,9 +1303,12 @@
                 view.setUint32(40, audioData.length * 2, true);
 
                 floatTo16BitPCM(view, 44, audioData);
+                console.log('Cabecera WAV y datos PCM escritos.');
 
                 const blob = new Blob([view], { type: 'audio/wav' });
                 const url = URL.createObjectURL(blob);
+                console.log('Blob y URL creados:', url);
+
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'mi_composicion_instrumental.wav';
@@ -1128,6 +1316,7 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+                console.log('Descarga activada y URL revocada.');
 
                 showModal('messageModal', 'Exportación a WAV', 'Pista instrumental exportada a mi_composicion_instrumental.wav. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
             } catch (error) {
