@@ -221,6 +221,18 @@
         </div>
     </div>
 
+    <div id="messageModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+            <h3 id="messageModalTitle" class="text-lg font-semibold text-purple-700 mb-4">Mensaje</h3>
+            <p id="messageModalContent" class="text-sm text-gray-700 mb-4"></p>
+            <div class="flex justify-end">
+                <button id="closeMessageModalBtn" class="px-4 py-2 bg-blue-400 hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-200 font-semibold">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <footer class="bg-white bg-opacity-80 backdrop-blur-sm p-3 rounded-xl shadow-md mt-4 text-center text-sm text-gray-600">
         Estado: <span id="statusMessage" class="font-semibold text-purple-700">Listo para componer...</span>
         <p class="mt-1 text-xs text-red-500">
@@ -333,6 +345,9 @@
         const newVoicebankRateOffsetEl = document.getElementById('newVoicebankRateOffset');
         const newVoicebankRateOffsetValueEl = document.getElementById('newVoicebankRateOffsetValue');
         const voicebankSampleTextEl = document.getElementById('voicebankSampleText');
+        const messageModal = document.getElementById('messageModal');
+        const messageModalTitleEl = document.getElementById('messageModalTitle');
+        const messageModalContentEl = document.getElementById('messageModalContent');
 
 
         // Helper to convert MIDI note number to frequency for instrumental track
@@ -527,7 +542,8 @@
 
             activeTrack.notes.sort((a, b) => a.startTimeMs - b.startTimeMs).forEach(note => {
                 const noteDiv = document.createElement('div');
-                noteDiv.className = `flex flex-wrap items-center justify-between p-2 mb-2 rounded-lg shadow-sm border border-gray-100 ${activeTrack.type === 'vocal' ? 'bg-pink-100' : 'bg-purple-100'}`;
+                noteDiv.className = `flex flex-wrap items-center justify-between p-2 mb-2 rounded-lg shadow-sm border border-gray-100
+                                        ${activeTrack.type === 'vocal' ? 'bg-pink-100' : 'bg-purple-100'}`;
                 noteDiv.setAttribute('data-note-id', note.id);
 
                 if (editingNoteId === note.id) {
@@ -621,7 +637,9 @@
             document.getElementById('suggestMelodyBtn').disabled = false;
         }
 
-        function showModal(modalId) {
+        function showModal(modalId, title = '', content = '') {
+            if (title) messageModalTitleEl.textContent = title;
+            if (content) messageModalContentEl.textContent = content;
             document.getElementById(modalId).classList.remove('hidden');
         }
 
@@ -1122,7 +1140,7 @@
             updateStatus('Exportando pista instrumental a WAV...');
             const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
             if (!pianoTrack || pianoTrack.notes.length === 0) {
-                updateStatus('No hay notas en la pista de piano para exportar.');
+                showModal('messageModal', 'Exportación a WAV', 'No hay notas en la pista de piano para exportar. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
                 return;
             }
 
@@ -1132,7 +1150,7 @@
             }, 0);
 
             if (maxDuration === 0) {
-                updateStatus('No hay audio para exportar.');
+                showModal('messageModal', 'Exportación a WAV', 'No hay audio para exportar. Añade notas a la pista de piano. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
                 return;
             }
 
@@ -1184,11 +1202,10 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
 
-                updateStatus('Pista instrumental exportada a mi_composicion_instrumental.wav');
-
+                showModal('messageModal', 'Exportación a WAV', 'Pista instrumental exportada a mi_composicion_instrumental.wav. La pista vocal no se puede exportar a WAV debido a limitaciones del navegador.');
             } catch (error) {
                 console.error('Error al renderizar o exportar WAV:', error);
-                updateStatus('Error al exportar la pista instrumental.');
+                showModal('messageModal', 'Error de Exportación', `Error al exportar la pista instrumental: ${error.message}.`);
             }
         }
 
@@ -1309,6 +1326,9 @@
             newVoicebankPitchOffsetEl.addEventListener('input', (e) => newVoicebankPitchOffsetValueEl.textContent = parseFloat(e.target.value).toFixed(1));
             newVoicebankRateOffsetEl.addEventListener('input', (e) => newVoicebankRateOffsetValueEl.textContent = parseFloat(e.target.value).toFixed(1));
             document.getElementById('playVoicebankSampleBtn').addEventListener('click', playVoicebankSample);
+
+            // Generic message modal close button
+            document.getElementById('closeMessageModalBtn').addEventListener('click', () => hideModal('messageModal'));
 
             // Initial render calls
             renderTrackList();
