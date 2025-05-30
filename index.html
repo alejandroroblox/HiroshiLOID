@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CeVIO AI Song (Simulación Avanzada)</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Basic styling for modals */
+        .modal {
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-gradient-to-br from-blue-100 to-pink-100 font-inter text-gray-800 p-4 sm:p-6 rounded-lg shadow-xl">
+
+    <header class="flex flex-col sm:flex-row items-center justify-between bg-white bg-opacity-80 backdrop-blur-sm p-3 sm:p-4 rounded-xl shadow-md mb-4">
+        <div class="flex items-center mb-2 sm:mb-0">
+            <span class="text-3xl font-bold text-purple-600 mr-2">🎶</span>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-purple-700">CeVIO AI Song (Simulación Avanzada)</h1>
+        </div>
+        <nav class="flex flex-wrap justify-center gap-2 sm:gap-3">
+            <button id="newProjectBtn" class="flex items-center px-3 py-2 bg-purple-400 hover:bg-purple-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text w-4 h-4 mr-1"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg> Nuevo
+            </button>
+            <button id="openProjectBtn" class="flex items-center px-3 py-2 bg-blue-400 hover:bg-blue-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-open w-4 h-4 mr-1"><path d="M6 17a3 3 0 0 0 3 3h10a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8a2 2 0 0 1-2-2 2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2z"/></svg> Abrir
+            </button>
+            <button id="saveProjectBtn" class="flex items-center px-3 py-2 bg-green-400 hover:bg-green-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save w-4 h-4 mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar
+            </button>
+            <button id="exportWavBtn" class="flex items-center px-3 py-2 bg-indigo-400 hover:bg-indigo-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm sm:text-base font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download w-4 h-4 mr-1"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Exportar WAV
+            </button>
+        </nav>
+    </header>
+
+    <main class="flex flex-1 flex-col lg:flex-row gap-4">
+        <aside class="w-full lg:w-1/4 bg-white bg-opacity-80 backdrop-blur-sm p-4 rounded-xl shadow-md flex flex-col">
+            <h2 class="text-lg font-semibold text-purple-700 mb-3 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sliders-horizontal w-5 h-5 mr-2"><path d="M14.5 17H21"/><path d="M3 17h3.5"/><path d="M10 10h11"/><path d="M3 10h3.5"/><path d="M17.5 3H21"/><path d="M3 3h6.5"/><circle cx="8" cy="17" r="2"/><circle cx="12" cy="10" r="2"/><circle cx="14" cy="3" r="2"/></svg> Pistas
+            </h2>
+            <div id="trackList" class="flex-1 overflow-y-auto">
+                </div>
+            <div id="vocalTrackControls" class="mt-4 p-3 bg-gray-100 rounded-lg hidden">
+                <label for="voiceSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                    Banco de Voz (TTS):
+                </label>
+                <select id="voiceSelect" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm">
+                    </select>
+                <button id="createVoicebankBtn" class="flex items-center justify-center mt-3 px-3 py-2 bg-purple-400 hover:bg-purple-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold w-full text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-voice w-4 h-4 mr-1"><path d="M15 22v-4a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v4"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/><circle cx="12" cy="7" r="4"/></svg> Crear Banco de Voz
+                </button>
+            </div>
+            <div id="instrumentalTrackControls" class="mt-4 p-3 bg-gray-100 rounded-lg hidden">
+                <label for="instrumentType" class="block text-sm font-medium text-gray-700 mb-1">
+                    Tipo de Instrumento:
+                </label>
+                <select id="instrumentType" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-300 text-sm">
+                    <option value="sine">Seno (Suave)</option>
+                    <option value="square">Cuadrada (Clarinete)</option>
+                    <option value="triangle">Triángulo (Flauta)</option>
+                    <option value="sawtooth">Diente de Sierra (Cuerdas)</option>
+                </select>
+            </div>
+        </aside>
+
+        <section class="flex-1 flex flex-col gap-4">
+            <div class="bg-white bg-opacity-80 backdrop-blur-sm p-4 rounded-xl shadow-md flex flex-wrap justify-center items-center gap-3">
+                <button id="rewindBtn" class="p-3 bg-blue-300 hover:bg-blue-400 text-white rounded-full shadow-md transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-left w-6 h-6"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+                </button>
+                <button id="playBtn" class="p-3 bg-green-400 hover:bg-green-500 text-white rounded-full shadow-md transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play w-6 h-6"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                </button>
+                <button id="pauseBtn" class="p-3 bg-yellow-300 hover:bg-yellow-400 text-white rounded-full shadow-md transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pause w-6 h-6"><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>
+                </button>
+                <button id="stopBtn" class="p-3 bg-red-400 hover:bg-red-500 text-white rounded-full shadow-md transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-square w-6 h-6"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+                </button>
+                <button id="fastForwardBtn" class="p-3 bg-blue-300 hover:bg-blue-400 text-white rounded-full shadow-md transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevrons-right w-6 h-6"><path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/></svg>
+                </button>
+                <div class="flex items-center ml-4">
+                    <span class="text-sm font-medium text-gray-600 mr-2">Volumen Maestro:</span>
+                    <input type="range" id="masterVolume" min="0" max="100" value="70" class="w-24 sm:w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-500"/>
+                    <span id="masterVolumeValue" class="ml-2 text-sm text-gray-700">70%</span>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-white bg-opacity-80 backdrop-blur-sm p-4 rounded-xl shadow-md flex flex-col overflow-hidden">
+                <h2 id="noteEditorTitle" class="text-lg font-semibold text-purple-700 mb-3">
+                    Editor de Notas para "Selecciona una Pista"
+                </h2>
+                <div id="noteInputSection" class="flex flex-wrap gap-2 mb-3 items-end">
+                    </div>
+
+                <div id="loadingIndicator" class="flex items-center justify-center p-4 bg-blue-100 rounded-lg text-blue-700 font-semibold mb-4 hidden">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-700" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span id="loadingMessage"></span>
+                </div>
+
+                <div id="noteList" class="flex-1 overflow-y-auto border border-gray-200 rounded-lg p-2 bg-gray-50">
+                    <p class="text-center text-gray-500 py-4">Añade algunas notas a esta pista.</p>
+                </div>
+            </div>
+
+            <div class="bg-white bg-opacity-80 backdrop-blur-sm p-4 rounded-xl shadow-md grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="flex flex-col items-center">
+                    <label for="globalPitch" class="text-sm font-medium text-gray-600 mb-1">Tono Global (Para nuevas notas MIDI)</label>
+                    <input type="range" id="globalPitch" min="0" max="127" value="60" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-400"/>
+                    <span id="globalPitchValue" class="text-xs text-gray-700 mt-1">60 (C4)</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <label for="globalDynamics" class="text-sm font-medium text-gray-600 mb-1">Dinámica Global (Para nuevas notas)</label>
+                    <input type="range" id="globalDynamics" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-400"/>
+                    <span id="globalDynamicsValue" class="text-xs text-gray-700 mt-1">50</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <label for="vibrato" class="text-sm font-medium text-gray-600 mb-1">Vibrato (Visual)</label>
+                    <input type="range" id="vibrato" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-400"/>
+                    <span id="vibratoValue" class="text-xs text-gray-700 mt-1">30</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <label for="expression" class="text-sm font-medium text-gray-600 mb-1">Expresión (Visual)</label>
+                    <input type="range" id="expression" min="0" max="100" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-400"/>
+                    <span id="expressionValue" class="text-xs text-gray-700 mt-1">50</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="lyricPromptModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-purple-700 mb-4">Generar Letra</h3>
+            <p class="text-sm text-gray-600 mb-3">Introduce un tema o unas palabras clave para tu letra.</p>
+            <input type="text" id="lyricPromptText" placeholder="Ej: un día soleado, amor perdido, aventura espacial..." class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 mb-4"/>
+            <div class="flex justify-end gap-3">
+                <button id="cancelLyricPromptBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg shadow-sm transition-all duration-200 font-semibold">
+                    Cancelar
+                </button>
+                <button id="generateLyricBtn" class="px-4 py-2 bg-green-400 hover:bg-green-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles inline-block w-4 h-4 mr-1"><path d="m12 3-1.912 5.813L2 10l8.088 1.188L12 18l1.912-5.813L22 10l-8.088-1.188Z"/></svg> Generar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="melodyPromptModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-purple-700 mb-4">Sugerir Melodía</h3>
+            <p class="text-sm text-gray-600 mb-3">Describe el estado de ánimo o el estilo de la melodía que deseas.</p>
+            <input type="text" id="melodyPromptText" placeholder="Ej: alegre y pegadiza, melancólica, misteriosa..." class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 mb-4"/>
+            <div class="flex justify-end gap-3">
+                <button id="cancelMelodyPromptBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg shadow-sm transition-all duration-200 font-semibold">
+                    Cancelar
+                </button>
+                <button id="suggestMelodyBtn" class="px-4 py-2 bg-green-400 hover:bg-green-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles inline-block w-4 h-4 mr-1"><path d="m12 3-1.912 5.813L2 10l8.088 1.188L12 18l1.912-5.813L22 10l-8.088-1.188Z"/></svg> Sugerir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="voicebankCreatorModal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-semibold text-purple-700 mb-4 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-voice w-5 h-5 mr-2"><path d="M15 22v-4a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v4"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/><circle cx="12" cy="7" r="4"/></svg> Crear Banco de Voz Personalizado
+            </h3>
+            <p class="text-sm text-gray-600 mb-3">Define las características de tu voz personalizada.</p>
+
+            <div class="mb-4">
+                <label for="newVoicebankName" class="block text-sm font-medium text-gray-700 mb-1">Nombre del Banco de Voz:</label>
+                <input type="text" id="newVoicebankName" placeholder="Ej: Mi Voz Dulce, Voz Robótica" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300"/>
+            </div>
+
+            <div class="mb-4">
+                <label for="newVoicebankBaseVoice" class="block text-sm font-medium text-gray-700 mb-1">Voz Base del Sistema:</label>
+                <select id="newVoicebankBaseVoice" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 text-sm">
+                    <option value="">Selecciona una voz base</option>
+                    </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div class="flex flex-col items-center">
+                    <label for="newVoicebankPitchOffset" class="text-sm font-medium text-gray-600 mb-1">Desplazamiento de Tono (-1.0 a 1.0)</label>
+                    <input type="range" id="newVoicebankPitchOffset" min="-1.0" max="1.0" step="0.1" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-400"/>
+                    <span id="newVoicebankPitchOffsetValue" class="text-xs text-gray-700 mt-1">0.0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <label for="newVoicebankRateOffset" class="text-sm font-medium text-gray-600 mb-1">Desplazamiento de Velocidad (-0.5 a 0.5)</label>
+                    <input type="range" id="newVoicebankRateOffset" min="-0.5" max="0.5" step="0.1" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-400"/>
+                    <span id="newVoicebankRateOffsetValue" class="text-xs text-gray-700 mt-1">0.0</span>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="voicebankSampleText" class="block text-sm font-medium text-gray-700 mb-1">Texto de Muestra:</label>
+                <input type="text" id="voicebankSampleText" value="Hola mundo" placeholder="Escribe algo para probar tu voz" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"/>
+                <button id="playVoicebankSampleBtn" class="mt-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold w-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play inline-block w-4 h-4 mr-1"><polygon points="5 3 19 12 5 21 5 3"/></svg> Probar Voz
+                </button>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <button id="cancelVoicebankCreatorBtn" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg shadow-sm transition-all duration-200 font-semibold">
+                    Cancelar
+                </button>
+                <button id="saveVoicebankBtn" class="px-4 py-2 bg-green-400 hover:bg-green-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save inline-block w-4 h-4 mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Guardar Banco de Voz
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-white bg-opacity-80 backdrop-blur-sm p-3 rounded-xl shadow-md mt-4 text-center text-sm text-gray-600">
+        Estado: <span id="statusMessage" class="font-semibold text-purple-700">Listo para componer...</span>
+        <p class="mt-1 text-xs text-red-500">
+            Nota: La síntesis de voz de canto con IA real no es posible directamente en el navegador.
+            La "voz" es generada por la API de Texto a Voz de tu sistema, y el "piano roll" reproduce sonidos de sintetizador básicos.
+            La exportación a WAV actualmente solo incluye la pista instrumental debido a las limitaciones de la API de Texto a Voz.
+        </p>
+    </footer>
+
+    <script>
+        // Helper functions for SVG icons (as strings for direct insertion)
+        const MicIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic w-5 h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>`;
+        const MusicIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-music w-5 h-5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+        const SparklesIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles inline-block w-4 h-4 mr-1"><path d="m12 3-1.912 5.813L2 10l8.088 1.188L12 18l1.912-5.813L22 10l-8.088-1.188Z"/></svg>`;
+        const PlusIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus inline-block w-4 h-4 mr-1"><path d="M12 5v14"/><path d="M5 12h14"/></svg>`;
+        const EditIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-edit w-4 h-4"></svg>`;
+        const Trash2IconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2 w-4 h-4"></svg>`;
+        const PlayIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play inline-block w-4 h-4 mr-1"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
+        const SaveIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-save inline-block w-4 h-4 mr-1"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+
+
+        // Global State Variables
+        let tracks = [];
+        let activeTrackId = 'vocalTrack';
+        let statusMessage = 'Listo para componer...';
+        let masterVolume = 70;
+        let globalPitch = 60;
+        let globalDynamics = 50;
+        let vibrato = 30; // Cosmetic for now
+        let expression = 50; // Cosmetic for now
+
+        let newNoteText = '';
+        let newNoteMidi = 60;
+        let newNoteDuration = 1000;
+        let newNoteStartTime = 0;
+
+        let editingNoteId = null;
+        let editingNoteText = '';
+        let editingNoteMidi = 60;
+        let editingNoteDuration = 1000;
+        let editingNoteStartTime = 0;
+
+        let isGenerating = false;
+        let lyricPromptText = '';
+        let melodyPromptText = '';
+
+        let customVoicebanks = [];
+        let newVoicebankName = '';
+        let newVoicebankBaseVoiceUri = '';
+        let newVoicebankPitchOffset = 0;
+        let newVoicebankRateOffset = 0;
+        let voicebankSampleText = 'Hola mundo';
+
+        // Audio related variables
+        let audioContext = null;
+        let masterGainNode = null;
+        let speechSynthesis = null;
+        let availableVoices = [];
+        let isPlaying = false;
+        let playbackTimeoutIds = [];
+        let currentPlaybackTime = 0;
+
+        // Initial track setup (same as React component)
+        const initialTracks = [
+            {
+                id: 'vocalTrack', name: 'Pista Vocal', type: 'vocal', color: 'bg-pink-200',
+                notes: [], // { id, text, midiNote, startTimeMs, durationMs, ttsRate }
+                selectedVoiceUri: '', // URI of the TTS voice or custom voicebank ID
+            },
+            {
+                id: 'pianoTrack', name: 'Pista de Piano', type: 'instrumental', color: 'bg-purple-200',
+                notes: [], // { id, midiNote, startTimeMs, durationMs, velocity }
+                instrumentType: 'sine', // 'sine', 'square', 'triangle', 'sawtooth'
+            },
+        ];
+
+        // DOM Elements (cached for performance)
+        const statusMessageEl = document.getElementById('statusMessage');
+        const masterVolumeEl = document.getElementById('masterVolume');
+        const masterVolumeValueEl = document.getElementById('masterVolumeValue');
+        const globalPitchEl = document.getElementById('globalPitch');
+        const globalPitchValueEl = document.getElementById('globalPitchValue');
+        const globalDynamicsEl = document.getElementById('globalDynamics');
+        const globalDynamicsValueEl = document.getElementById('globalDynamicsValue');
+        const vibratoEl = document.getElementById('vibrato');
+        const vibratoValueEl = document.getElementById('vibratoValue');
+        const expressionEl = document.getElementById('expression');
+        const expressionValueEl = document.getElementById('expressionValue');
+        const trackListEl = document.getElementById('trackList');
+        const vocalTrackControlsEl = document.getElementById('vocalTrackControls');
+        const instrumentalTrackControlsEl = document.getElementById('instrumentalTrackControls');
+        const voiceSelectEl = document.getElementById('voiceSelect');
+        const instrumentTypeEl = document.getElementById('instrumentType');
+        const noteEditorTitleEl = document.getElementById('noteEditorTitle');
+        const noteInputSectionEl = document.getElementById('noteInputSection');
+        const noteListEl = document.getElementById('noteList');
+        const loadingIndicatorEl = document.getElementById('loadingIndicator');
+        const loadingMessageEl = document.getElementById('loadingMessage');
+
+        // Modals
+        const lyricPromptModal = document.getElementById('lyricPromptModal');
+        const lyricPromptTextEl = document.getElementById('lyricPromptText');
+        const melodyPromptModal = document.getElementById('melodyPromptModal');
+        const melodyPromptTextEl = document.getElementById('melodyPromptText');
+        const voicebankCreatorModal = document.getElementById('voicebankCreatorModal');
+        const newVoicebankNameEl = document.getElementById('newVoicebankName');
+        const newVoicebankBaseVoiceEl = document.getElementById('newVoicebankBaseVoice');
+        const newVoicebankPitchOffsetEl = document.getElementById('newVoicebankPitchOffset');
+        const newVoicebankPitchOffsetValueEl = document.getElementById('newVoicebankPitchOffsetValue');
+        const newVoicebankRateOffsetEl = document.getElementById('newVoicebankRateOffset');
+        const newVoicebankRateOffsetValueEl = document.getElementById('newVoicebankRateOffsetValue');
+        const voicebankSampleTextEl = document.getElementById('voicebankSampleText');
+
+
+        // Helper to convert MIDI note number to frequency for instrumental track
+        function midiToFrequency(midiNote) {
+            return 440 * Math.pow(2, (midiNote - 69) / 12);
+        }
+
+        // Helper to convert MIDI note number to a common note name (e.g., 60 -> C4)
+        function midiToNoteName(midiNote) {
+            const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            const octave = Math.floor(midiNote / 12) - 1;
+            const noteIndex = midiNote % 12;
+            return noteNames[noteIndex] + octave;
+        }
+
+        // UI Update Functions
+        function updateStatus(message) {
+            statusMessage = message;
+            if (statusMessageEl) {
+                statusMessageEl.textContent = message;
+            }
+        }
+
+        function updateMasterVolumeUI() {
+            if (masterVolumeEl) {
+                masterVolumeEl.value = masterVolume;
+            }
+            if (masterVolumeValueEl) {
+                masterVolumeValueEl.textContent = `${masterVolume}%`;
+            }
+            if (masterGainNode) {
+                masterGainNode.gain.value = masterVolume / 100;
+            }
+        }
+
+        function updateGlobalParametersUI() {
+            if (globalPitchEl) {
+                globalPitchEl.value = globalPitch;
+            }
+            if (globalPitchValueEl) {
+                globalPitchValueEl.textContent = `${globalPitch} (${midiToNoteName(globalPitch)})`;
+            }
+            if (globalDynamicsEl) {
+                globalDynamicsEl.value = globalDynamics;
+            }
+            if (globalDynamicsValueEl) {
+                globalDynamicsValueEl.textContent = globalDynamics;
+            }
+            if (vibratoEl) {
+                vibratoEl.value = vibrato;
+            }
+            if (vibratoValueEl) {
+                vibratoValueEl.textContent = vibrato;
+            }
+            if (expressionEl) {
+                expressionEl.value = expression;
+            }
+            if (expressionValueEl) {
+                expressionValueEl.textContent = expression;
+            }
+        }
+
+        function renderTrackList() {
+            if (!trackListEl) return;
+            trackListEl.innerHTML = '';
+            tracks.forEach(track => {
+                const trackDiv = document.createElement('div');
+                trackDiv.id = `track-${track.id}`;
+                trackDiv.className = `flex items-center p-3 mb-2 rounded-lg cursor-pointer transition-all duration-200 ${activeTrackId === track.id ? 'bg-purple-300 text-purple-900 shadow-inner' : `${track.color} hover:bg-opacity-70`} text-sm font-medium`;
+                trackDiv.innerHTML = `<span class="mr-2 text-xl">${track.type === 'vocal' ? MicIconSVG : MusicIconSVG}</span>${track.name}`;
+                trackDiv.addEventListener('click', () => handleTrackSelect(track.id));
+                trackListEl.appendChild(trackDiv);
+            });
+
+            // Show/hide track-specific controls
+            if (activeTrackId === 'vocalTrack') {
+                vocalTrackControlsEl.classList.remove('hidden');
+                instrumentalTrackControlsEl.classList.add('hidden');
+                renderVoiceSelect();
+            } else if (activeTrackId === 'pianoTrack') {
+                vocalTrackControlsEl.classList.add('hidden');
+                instrumentalTrackControlsEl.classList.remove('hidden');
+                instrumentTypeEl.value = tracks.find(t => t.id === 'pianoTrack').instrumentType;
+            } else {
+                vocalTrackControlsEl.classList.add('hidden');
+                instrumentalTrackControlsEl.classList.add('hidden');
+            }
+        }
+
+        function renderVoiceSelect() {
+            if (!voiceSelectEl) return;
+            voiceSelectEl.innerHTML = '<option value="">Voz Predeterminada del Sistema</option>';
+
+            const systemOptgroup = document.createElement('optgroup');
+            systemOptgroup.label = "Voces del Sistema";
+            availableVoices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.voiceURI;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                systemOptgroup.appendChild(option);
+            });
+            voiceSelectEl.appendChild(systemOptgroup);
+
+            if (customVoicebanks.length > 0) {
+                const customOptgroup = document.createElement('optgroup');
+                customOptgroup.label = "Mis Bancos de Voz Personalizados";
+                customVoicebanks.forEach(vb => {
+                    const option = document.createElement('option');
+                    option.value = vb.id;
+                    option.textContent = vb.name;
+                    customOptgroup.appendChild(option);
+                });
+                voiceSelectEl.appendChild(customOptgroup);
+            }
+            const activeTrack = tracks.find(t => t.id === activeTrackId);
+            if (activeTrack && activeTrack.type === 'vocal') {
+                voiceSelectEl.value = activeTrack.selectedVoiceUri;
+            }
+        }
+
+        function renderNoteInputSection() {
+            if (!noteInputSectionEl) return;
+            noteInputSectionEl.innerHTML = ''; // Clear existing inputs
+
+            const activeTrack = tracks.find(t => t.id === activeTrackId);
+            if (!activeTrack) return;
+
+            noteEditorTitleEl.textContent = `Editor de Notas para "${activeTrack.name}"`;
+
+            let inputHTML = '';
+            if (activeTrack.type === 'vocal') {
+                inputHTML = `
+                    <input type="text" id="newNoteText" value="${newNoteText}" placeholder="Texto de la nota vocal (ej: 'la')" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 min-w-[150px]" ${isGenerating ? 'disabled' : ''}/>
+                    <div class="flex flex-col w-24">
+                        <label for="newNoteMidiVocal" class="text-xs text-gray-500">Nota MIDI (0-127)</label>
+                        <input type="number" id="newNoteMidiVocal" value="${newNoteMidi}" placeholder="Ej: 60 (C4)" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300" ${isGenerating ? 'disabled' : ''}/>
+                    </div>
+                    <button id="generateLyricPromptBtn" class="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold flex items-center justify-center" ${isGenerating ? 'disabled' : ''}>
+                        ${SparklesIconSVG} Generar Letra
+                    </button>
+                `;
+            } else { // Instrumental
+                inputHTML = `
+                    <div class="flex flex-col flex-1 min-w-[150px]">
+                        <label for="newNoteMidiInstrumental" class="text-xs text-gray-500">Nota MIDI (0-127)</label>
+                        <input type="number" id="newNoteMidiInstrumental" value="${newNoteMidi}" placeholder="Ej: 60 (C4)" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300" ${isGenerating ? 'disabled' : ''}/>
+                    </div>
+                    <button id="suggestMelodyPromptBtn" class="mt-2 px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold flex items-center justify-center" ${isGenerating ? 'disabled' : ''}>
+                        ${SparklesIconSVG} Sugerir Melodía
+                    </button>
+                `;
+            }
+
+            inputHTML += `
+                <div class="flex flex-col w-24">
+                    <label for="newNoteDuration" class="text-xs text-gray-500">Duración (ms)</label>
+                    <input type="number" id="newNoteDuration" value="${newNoteDuration}" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300" ${isGenerating ? 'disabled' : ''}/>
+                </div>
+                <div class="flex flex-col w-24">
+                    <label for="newNoteStartTime" class="text-xs text-gray-500">Inicio (ms)</label>
+                    <input type="number" id="newNoteStartTime" value="${newNoteStartTime}" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-300" ${isGenerating ? 'disabled' : ''}/>
+                </div>
+                <button id="addNoteBtn" class="px-4 py-2 bg-pink-400 hover:bg-pink-500 text-white rounded-lg shadow-md transition-all duration-200 font-semibold" ${isGenerating ? 'disabled' : ''}>
+                    ${PlusIconSVG} Añadir Nota
+                </button>
+            `;
+            noteInputSectionEl.innerHTML = inputHTML;
+
+            // Re-attach event listeners for newly created elements
+            document.getElementById('addNoteBtn').addEventListener('click', addNote);
+            if (activeTrack.type === 'vocal') {
+                document.getElementById('newNoteText').addEventListener('input', (e) => newNoteText = e.target.value);
+                document.getElementById('newNoteMidiVocal').addEventListener('input', (e) => newNoteMidi = Math.min(127, Math.max(0, parseInt(e.target.value) || 0)));
+                document.getElementById('generateLyricPromptBtn').addEventListener('click', () => showModal('lyricPromptModal'));
+            } else {
+                document.getElementById('newNoteMidiInstrumental').addEventListener('input', (e) => newNoteMidi = Math.min(127, Math.max(0, parseInt(e.target.value) || 0)));
+                document.getElementById('suggestMelodyPromptBtn').addEventListener('click', () => showModal('melodyPromptModal'));
+            }
+            document.getElementById('newNoteDuration').addEventListener('input', (e) => newNoteDuration = Math.max(100, parseInt(e.target.value) || 100));
+            document.getElementById('newNoteStartTime').addEventListener('input', (e) => newNoteStartTime = Math.max(0, parseInt(e.target.value) || 0));
+        }
+
+        function renderNoteList() {
+            if (!noteListEl) return;
+            noteListEl.innerHTML = ''; // Clear existing notes
+
+            const activeTrack = tracks.find(t => t.id === activeTrackId);
+            if (!activeTrack || activeTrack.notes.length === 0) {
+                noteListEl.innerHTML = '<p class="text-center text-gray-500 py-4">Añade algunas notas a esta pista.</p>';
+                return;
+            }
+
+            activeTrack.notes.sort((a, b) => a.startTimeMs - b.startTimeMs).forEach(note => {
+                const noteDiv = document.createElement('div');
+                noteDiv.className = `flex flex-wrap items-center justify-between p-2 mb-2 rounded-lg shadow-sm border border-gray-100 ${activeTrack.type === 'vocal' ? 'bg-pink-100' : 'bg-purple-100'}`;
+                noteDiv.setAttribute('data-note-id', note.id);
+
+                if (editingNoteId === note.id) {
+                    noteDiv.innerHTML = `
+                        <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            ${activeTrack.type === 'vocal' ? `
+                                <input type="text" id="editingNoteText-${note.id}" value="${note.text}" class="p-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 col-span-2" autofocus/>
+                                <div class="flex flex-col">
+                                    <label class="text-xs text-gray-500">Nota MIDI</label>
+                                    <input type="number" id="editingNoteMidi-${note.id}" value="${note.midiNote}" class="p-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                                </div>
+                            ` : `
+                                <div class="flex flex-col">
+                                    <label class="text-xs text-gray-500">Nota MIDI</label>
+                                    <input type="number" id="editingNoteMidi-${note.id}" value="${note.midiNote}" class="p-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                                </div>
+                            `}
+                            <div class="flex flex-col">
+                                <label class="text-xs text-gray-500">Duración (ms)</label>
+                                <input type="number" id="editingNoteDuration-${note.id}" value="${note.durationMs}" class="p-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="text-xs text-gray-500">Inicio (ms)</label>
+                                <input type="number" id="editingNoteStartTime-${note.id}" value="${note.startTimeMs}" class="p-1 border border-blue-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"/>
+                            </div>
+                            <button id="saveEditedNoteBtn-${note.id}" class="col-span-2 px-3 py-1 bg-green-400 hover:bg-green-500 text-white rounded-lg shadow-sm transition-all duration-200 text-sm">
+                                Guardar
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    noteDiv.innerHTML = `
+                        <span class="text-gray-800 font-medium flex-1">
+                            ${activeTrack.type === 'vocal' ?
+                                `${note.text} (Nota: ${midiToNoteName(note.midiNote)})` :
+                                `Nota MIDI: ${midiToNoteName(note.midiNote)} (Frec: ${midiToFrequency(note.midiNote).toFixed(2)} Hz)`
+                            }
+                            <br/>
+                            <span class="text-xs text-gray-600">Inicio: ${note.startTimeMs}ms, Duración: ${note.durationMs}ms</span>
+                        </span>
+                        <div class="flex gap-2 ml-4">
+                            <button class="edit-note-btn p-1 bg-blue-200 hover:bg-blue-300 text-blue-700 rounded-full transition-all duration-200" title="Editar nota" data-note-id="${note.id}">
+                                ${EditIconSVG}
+                            </button>
+                            <button class="delete-note-btn p-1 bg-red-200 hover:bg-red-300 text-red-700 rounded-full transition-all duration-200" title="Eliminar nota" data-note-id="${note.id}">
+                                ${Trash2IconSVG}
+                            </button>
+                        </div>
+                    `;
+                }
+                noteListEl.appendChild(noteDiv);
+
+                // Attach event listeners for edit/delete buttons
+                if (editingNoteId === note.id) {
+                    if (activeTrack.type === 'vocal') {
+                        document.getElementById(`editingNoteText-${note.id}`).addEventListener('input', (e) => editingNoteText = e.target.value);
+                        document.getElementById(`editingNoteMidi-${note.id}`).addEventListener('input', (e) => editingNoteMidi = Math.min(127, Math.max(0, parseInt(e.target.value) || 0)));
+                    } else {
+                        document.getElementById(`editingNoteMidi-${note.id}`).addEventListener('input', (e) => editingNoteMidi = Math.min(127, Math.max(0, parseInt(e.target.value) || 0)));
+                    }
+                    document.getElementById(`editingNoteDuration-${note.id}`).addEventListener('input', (e) => editingNoteDuration = Math.max(100, parseInt(e.target.value) || 100));
+                    document.getElementById(`editingNoteStartTime-${note.id}`).addEventListener('input', (e) => editingNoteStartTime = Math.max(0, parseInt(e.target.value) || 0));
+                    document.getElementById(`saveEditedNoteBtn-${note.id}`).addEventListener('click', () => saveEditedNote(activeTrack.id, note.id));
+                } else {
+                    noteDiv.querySelector('.edit-note-btn').addEventListener('click', () => startEditingNote(activeTrack.id, note));
+                    noteDiv.querySelector('.delete-note-btn').addEventListener('click', () => deleteNote(activeTrack.id, note.id));
+                }
+            });
+        }
+
+        function showLoading(message) {
+            loadingIndicatorEl.classList.remove('hidden');
+            loadingMessageEl.textContent = message;
+            // Disable relevant input elements
+            const inputs = noteInputSectionEl.querySelectorAll('input, button');
+            inputs.forEach(input => input.disabled = true);
+            lyricPromptTextEl.disabled = true;
+            melodyPromptTextEl.disabled = true;
+            document.getElementById('generateLyricBtn').disabled = true;
+            document.getElementById('suggestMelodyBtn').disabled = true;
+        }
+
+        function hideLoading() {
+            loadingIndicatorEl.classList.add('hidden');
+            // Re-enable relevant input elements
+            const inputs = noteInputSectionEl.querySelectorAll('input, button');
+            inputs.forEach(input => input.disabled = false);
+            lyricPromptTextEl.disabled = false;
+            melodyPromptTextEl.disabled = false;
+            document.getElementById('generateLyricBtn').disabled = false;
+            document.getElementById('suggestMelodyBtn').disabled = false;
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Core Audio Functions
+        function playPianoNote(midiNote, durationMs, velocity, startTimeAudioContext, context) {
+            const currentContext = context || audioContext;
+            const currentMasterGain = context ? context.destination : masterGainNode;
+
+            if (!currentContext || !currentMasterGain) return;
+
+            const freq = midiToFrequency(midiNote);
+            const oscillator = currentContext.createOscillator();
+            const gainNode = currentContext.createGain();
+
+            const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
+            const instrumentType = pianoTrack ? pianoTrack.instrumentType : 'sine';
+
+            oscillator.type = instrumentType;
+            oscillator.frequency.setValueAtTime(freq, currentContext.currentTime);
+
+            const now = currentContext.currentTime;
+            const attackTime = 0.01;
+            const decayTime = 0.2;
+            const sustainLevel = 0.5;
+            const releaseTime = 0.3;
+
+            const initialGain = (velocity / 100) * 0.5;
+
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(initialGain, now + attackTime);
+            gainNode.gain.exponentialRampToValueAtTime(initialGain * sustainLevel, now + attackTime + decayTime);
+            gainNode.gain.linearRampToValueAtTime(0, now + (durationMs / 1000) + releaseTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(currentMasterGain);
+
+            oscillator.start(startTimeAudioContext);
+            oscillator.stop(startTimeAudioContext + (durationMs / 1000) + releaseTime);
+        }
+
+        function playTtsUtterance(text, midiNote, ttsRate, voiceURI) {
+            if (!speechSynthesis) return;
+
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            let finalVoice = availableVoices.find(v => v.voiceURI === voiceURI);
+            let finalPitchOffset = 0;
+            let finalRateOffset = 0;
+
+            const customVoice = customVoicebanks.find(vb => vb.id === voiceURI);
+            if (customVoice) {
+                finalVoice = availableVoices.find(v => v.voiceURI === customVoice.baseVoiceUri);
+                finalPitchOffset = customVoice.pitchOffset;
+                finalRateOffset = customVoice.rateOffset;
+            }
+
+            if (finalVoice) {
+                utterance.voice = finalVoice;
+            } else {
+                const spanishVoice = availableVoices.find(v => v.lang.startsWith('es'));
+                if (spanishVoice) {
+                    utterance.voice = spanishVoice;
+                } else {
+                    console.warn('No se encontró la voz seleccionada ni una voz en español. Usando la voz predeterminada.');
+                }
+            }
+
+            const pitchUnitPerMidiNote = (2.0 - 0.5) / (84 - 48);
+            let ttsPitchValue = 0.5 + (midiNote - 48) * pitchUnitPerMidiNote;
+            utterance.pitch = Math.max(0, Math.min(2, ttsPitchValue + finalPitchOffset));
+
+            let ttsRateValue = (ttsRate / 100) * 1.5 + 0.5;
+            utterance.rate = Math.max(0.1, Math.min(10, ttsRateValue + finalRateOffset));
+
+            speechSynthesis.speak(utterance);
+        }
+
+        function playAllNotes() {
+            if (isPlaying) {
+                stopPlayback();
+            }
+
+            isPlaying = true;
+            updateStatus('Reproduciendo...');
+            currentPlaybackTime = 0;
+            speechSynthesis.cancel();
+
+            playbackTimeoutIds.forEach(id => clearTimeout(id));
+            playbackTimeoutIds = [];
+
+            const allScheduledEvents = [];
+            tracks.forEach(track => {
+                track.notes.forEach(note => {
+                    allScheduledEvents.push({
+                        type: track.type,
+                        data: note,
+                        trackId: track.id,
+                        startTimeMs: note.startTimeMs,
+                        durationMs: note.durationMs,
+                    });
+                });
+            });
+
+            allScheduledEvents.sort((a, b) => a.startTimeMs - b.startTimeMs);
+
+            let lastEventEndTime = 0;
+
+            allScheduledEvents.forEach(event => {
+                const delayMs = event.startTimeMs - currentPlaybackTime;
+                const actualDelay = Math.max(0, delayMs);
+
+                const timeoutId = setTimeout(() => {
+                    if (!isPlaying) return;
+
+                    if (event.type === 'vocal') {
+                        const vocalTrack = tracks.find(t => t.id === event.trackId);
+                        playTtsUtterance(event.data.text, event.data.midiNote, event.data.ttsRate, vocalTrack.selectedVoiceUri);
+                    } else if (event.type === 'instrumental') {
+                        const startTimeAudioContext = audioContext.currentTime;
+                        playPianoNote(event.data.midiNote, event.data.durationMs, event.data.velocity, startTimeAudioContext);
+                    }
+                    currentPlaybackTime = event.startTimeMs;
+                }, actualDelay);
+                playbackTimeoutIds.push(timeoutId);
+
+                lastEventEndTime = Math.max(lastEventEndTime, event.startTimeMs + event.durationMs);
+            });
+
+            const finishTimeoutId = setTimeout(() => {
+                if (isPlaying) {
+                    updateStatus('Reproducción finalizada.');
+                    isPlaying = false;
+                }
+            }, lastEventEndTime + 500);
+            playbackTimeoutIds.push(finishTimeoutId);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            speechSynthesis.cancel();
+            playbackTimeoutIds.forEach(id => clearTimeout(id));
+            playbackTimeoutIds = [];
+            updateStatus('Reproducción detenida.');
+            currentPlaybackTime = 0;
+        }
+
+        function pausePlayback() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.pause();
+                isPlaying = false;
+                playbackTimeoutIds.forEach(id => clearTimeout(id));
+                playbackTimeoutIds = [];
+                updateStatus('Reproducción en pausa.');
+            }
+        }
+
+        function resumePlayback() {
+            if (speechSynthesis.paused) {
+                speechSynthesis.resume();
+                isPlaying = true;
+                updateStatus('Reproduciendo...');
+                playAllNotes();
+            } else if (!isPlaying) {
+                playAllNotes();
+            }
+        }
+
+        // UI Actions
+        function handleAction(action) {
+            updateStatus(`Acción: ${action}`);
+            console.log(`Acción: ${action}`);
+            if (action === 'Play') playAllNotes();
+            if (action === 'Stop') stopPlayback();
+            if (action === 'Pause') pausePlayback();
+            if (action === 'Resume') resumePlayback();
+        }
+
+        function handleTrackSelect(trackId) {
+            activeTrackId = trackId;
+            const selectedTrack = tracks.find(t => t.id === trackId);
+            updateStatus(`Pista seleccionada: ${selectedTrack.name}`);
+            newNoteText = '';
+            newNoteMidi = 60;
+            newNoteDuration = 1000;
+            newNoteStartTime = 0;
+            editingNoteId = null;
+            renderTrackList(); // Re-render to update active state
+            renderNoteInputSection();
+            renderNoteList();
+        }
+
+        // Note Management
+        function addNote() {
+            const activeTrack = tracks.find(t => t.id === activeTrackId);
+            if (!activeTrack) return;
+
+            let newNote;
+            if (activeTrack.type === 'vocal') {
+                if (newNoteText.trim() === '') {
+                    updateStatus('Por favor, introduce texto para la nota vocal.');
+                    return;
+                }
+                newNote = {
+                    id: Date.now(),
+                    text: newNoteText.trim(),
+                    midiNote: newNoteMidi,
+                    startTimeMs: newNoteStartTime,
+                    durationMs: newNoteDuration,
+                    ttsRate: globalDynamics,
+                };
+            } else { // Instrumental
+                newNote = {
+                    id: Date.now(),
+                    midiNote: newNoteMidi,
+                    startTimeMs: newNoteStartTime,
+                    durationMs: newNoteDuration,
+                    velocity: globalDynamics,
+                };
+            }
+
+            activeTrack.notes.push(newNote);
+            updateStatus('Nota añadida.');
+            newNoteText = '';
+            newNoteMidi = 60; // Reset for next note
+            newNoteDuration = 1000; // Reset for next note
+            newNoteStartTime = 0; // Reset for next note
+            renderNoteInputSection(); // Update input fields
+            renderNoteList(); // Re-render note list
+            saveProject();
+        }
+
+        function deleteNote(trackId, noteId) {
+            const track = tracks.find(t => t.id === trackId);
+            if (track) {
+                track.notes = track.notes.filter(note => note.id !== noteId);
+            }
+            updateStatus('Nota eliminada.');
+            renderNoteList();
+            saveProject();
+        }
+
+        function startEditingNote(trackId, note) {
+            editingNoteId = note.id;
+            editingNoteDuration = note.durationMs;
+            editingNoteStartTime = note.startTimeMs;
+
+            const track = tracks.find(t => t.id === trackId);
+            if (track.type === 'vocal') {
+                editingNoteText = note.text;
+                editingNoteMidi = note.midiNote;
+            } else {
+                editingNoteMidi = note.midiNote;
+            }
+            renderNoteList(); // Re-render to show editing UI
+        }
+
+        function saveEditedNote(trackId, noteId) {
+            const track = tracks.find(t => t.id === trackId);
+            if (track) {
+                track.notes = track.notes.map(note =>
+                    note.id === noteId
+                        ? (track.type === 'vocal'
+                            ? { ...note, text: editingNoteText.trim(), midiNote: editingNoteMidi, durationMs: editingNoteDuration, startTimeMs: editingNoteStartTime }
+                            : { ...note, midiNote: editingNoteMidi, durationMs: editingNoteDuration, startTimeMs: editingNoteStartTime }
+                        )
+                        : note
+                );
+            }
+            editingNoteId = null;
+            updateStatus('Nota editada.');
+            renderNoteList();
+            saveProject();
+        }
+
+        // Project Save/Load (using localStorage)
+        function saveProject() {
+            try {
+                localStorage.setItem('cevioAiSongProject', JSON.stringify({ tracks, masterVolume, globalPitch, globalDynamics, vibrato, expression, customVoicebanks }));
+                updateStatus('Proyecto guardado localmente.');
+            } catch (error) {
+                console.error('Error al guardar el proyecto:', error);
+                updateStatus('Error al guardar el proyecto.');
+            }
+        }
+
+        function loadProject() {
+            try {
+                const savedData = localStorage.getItem('cevioAiSongProject');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    const loadedTracks = parsedData.tracks || initialTracks;
+
+                    // Merge loaded tracks with initial structure to handle new fields or missing tracks
+                    tracks = initialTracks.map(initialTrack => {
+                        const loadedTrack = loadedTracks.find(lt => lt.id === initialTrack.id);
+                        if (loadedTrack) {
+                            return {
+                                ...initialTrack,
+                                ...loadedTrack,
+                                notes: loadedTrack.notes || [],
+                                selectedVoiceUri: loadedTrack.selectedVoiceUri !== undefined ? loadedTrack.selectedVoiceUri : initialTrack.selectedVoiceUri,
+                                instrumentType: loadedTrack.instrumentType !== undefined ? loadedTrack.instrumentType : initialTrack.instrumentType,
+                            };
+                        }
+                        return initialTrack;
+                    });
+
+                    masterVolume = parsedData.masterVolume !== undefined ? parsedData.masterVolume : 70;
+                    globalPitch = parsedData.globalPitch !== undefined ? parsedData.globalPitch : 60;
+                    globalDynamics = parsedData.globalDynamics !== undefined ? parsedData.globalDynamics : 50;
+                    vibrato = parsedData.vibrato !== undefined ? parsedData.vibrato : 30;
+                    expression = parsedData.expression !== undefined ? parsedData.expression : 50;
+                    customVoicebanks = parsedData.customVoicebanks || [];
+                    updateStatus('Proyecto cargado desde el almacenamiento local.');
+                } else {
+                    tracks = JSON.parse(JSON.stringify(initialTracks)); // Deep copy initial tracks
+                    updateStatus('No se encontró ningún proyecto guardado.');
+                }
+                // Re-render all UI elements after loading
+                renderTrackList();
+                renderNoteInputSection();
+                renderNoteList();
+                updateMasterVolumeUI();
+                updateGlobalParametersUI();
+            } catch (error) {
+                console.error('Error al cargar el proyecto:', error);
+                updateStatus('Error al cargar el proyecto.');
+            }
+        }
+
+        // LLM Functions
+        async function generateLyrics() {
+            if (isGenerating) return;
+            isGenerating = true;
+            showLoading('✨ Generando letra con IA...');
+
+            let chatHistory = [];
+            const prompt = `Genera una línea de letra de canción en español sobre el tema: "${lyricPromptTextEl.value}". La respuesta debe ser solo la línea de letra, sin explicaciones ni formato adicional.`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will provide this in runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    newNoteText = text.trim();
+                    document.getElementById('newNoteText').value = newNoteText; // Update input field
+                    updateStatus('✨ Letra generada. ¡Añádela a tu pista!');
+                } else {
+                    updateStatus('Error al generar letra: No se recibió contenido válido.');
+                    console.error('Error al generar letra:', result);
+                }
+            } catch (error) {
+                updateStatus('Error de conexión al generar letra.');
+                console.error('Error de red o API:', error);
+            } finally {
+                isGenerating = false;
+                hideLoading();
+                hideModal('lyricPromptModal');
+                lyricPromptTextEl.value = '';
+            }
+        }
+
+        async function suggestMelody() {
+            if (isGenerating) return;
+            isGenerating = true;
+            showLoading('✨ Sugiriendo melodía con IA...');
+
+            let chatHistory = [];
+            const prompt = `Genera una secuencia de 3 a 5 notas MIDI para una melodía de piano con un estado de ánimo "${melodyPromptTextEl.value}". Cada nota debe ser un objeto con 'midiNote' (número entero entre 40 y 80) y 'durationMs' (número entero entre 300 y 1200). Responde solo con un array JSON de estos objetos, sin texto adicional.`;
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = {
+                contents: chatHistory,
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "midiNote": { "type": "INTEGER" },
+                                "durationMs": { "type": "INTEGER" }
+                            },
+                            "propertyOrdering": ["midiNote", "durationMs"]
+                        }
+                    }
+                }
+            };
+            const apiKey = ""; // Canvas will provide this in runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const jsonString = result.candidates[0].content.parts[0].text;
+                    const suggestedNotes = JSON.parse(jsonString);
+
+                    if (Array.isArray(suggestedNotes) && suggestedNotes.every(n => typeof n.midiNote === 'number' && typeof n.durationMs === 'number')) {
+                        let currentStartTime = (tracks.find(t => t.id === 'pianoTrack')?.notes.reduce((max, note) => Math.max(max, note.startTimeMs + note.durationMs), 0) || 0) + 200;
+
+                        const newMelodyNotes = suggestedNotes.map(note => {
+                            const noteToAdd = {
+                                id: Date.now() + Math.random(),
+                                midiNote: Math.max(40, Math.min(80, note.midiNote)),
+                                startTimeMs: currentStartTime,
+                                durationMs: Math.max(200, Math.min(1200, note.durationMs)),
+                                velocity: globalDynamics,
+                            };
+                            currentStartTime += noteToAdd.durationMs;
+                            return noteToAdd;
+                        });
+
+                        const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
+                        if (pianoTrack) {
+                            pianoTrack.notes.push(...newMelodyNotes);
+                        }
+                        updateStatus('✨ Melodía sugerida y añadida a la pista de piano.');
+                        renderNoteList(); // Re-render note list
+                        saveProject();
+                    } else {
+                        updateStatus('Error al generar melodía: Formato de datos inesperado.');
+                        console.error('Formato de datos inesperado:', suggestedNotes);
+                    }
+                } else {
+                    updateStatus('Error al generar melodía: No se recibió contenido válido.');
+                    console.error('Error al generar melodía:', result);
+                }
+            } catch (error) {
+                updateStatus('Error de conexión al generar melodía.');
+                console.error('Error de red o API:', error);
+            } finally {
+                isGenerating = false;
+                hideLoading();
+                hideModal('melodyPromptModal');
+                melodyPromptTextEl.value = '';
+            }
+        }
+
+        // Custom Voicebank Functions
+        function createVoicebank() {
+            if (newVoicebankNameEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
+                updateStatus('Por favor, completa todos los campos para el banco de voz.');
+                return;
+            }
+
+            const newVoicebank = {
+                id: `custom-voice-${Date.now()}`,
+                name: newVoicebankNameEl.value.trim(),
+                baseVoiceUri: newVoicebankBaseVoiceEl.value,
+                pitchOffset: parseFloat(newVoicebankPitchOffsetEl.value),
+                rateOffset: parseFloat(newVoicebankRateOffsetEl.value),
+            };
+
+            customVoicebanks.push(newVoicebank);
+            updateStatus(`Banco de voz "${newVoicebank.name}" creado.`);
+            hideModal('voicebankCreatorModal');
+            newVoicebankNameEl.value = '';
+            newVoicebankPitchOffsetEl.value = 0;
+            newVoicebankRateOffsetEl.value = 0;
+            newVoicebankBaseVoiceEl.value = availableVoices.find(v => v.lang.startsWith('es'))?.voiceURI || availableVoices[0]?.voiceURI || '';
+            renderVoiceSelect(); // Re-render voice select to show new voicebank
+            saveProject();
+        }
+
+        function playVoicebankSample() {
+            if (voicebankSampleTextEl.value.trim() === '' || !newVoicebankBaseVoiceEl.value) {
+                updateStatus('Introduce texto de muestra y selecciona una voz base.');
+                return;
+            }
+            playTtsUtterance(voicebankSampleTextEl.value, 60, 50, newVoicebankBaseVoiceEl.value);
+            updateStatus('Reproduciendo muestra de voz.');
+        }
+
+        // WAV Export Function
+        async function exportToWav() {
+            updateStatus('Exportando pista instrumental a WAV...');
+            const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
+            if (!pianoTrack || pianoTrack.notes.length === 0) {
+                updateStatus('No hay notas en la pista de piano para exportar.');
+                return;
+            }
+
+            const maxDuration = tracks.reduce((max, track) => {
+                const trackMaxTime = track.notes.reduce((noteMax, note) => Math.max(noteMax, note.startTimeMs + note.durationMs), 0);
+                return Math.max(max, trackMaxTime);
+            }, 0);
+
+            if (maxDuration === 0) {
+                updateStatus('No hay audio para exportar.');
+                return;
+            }
+
+            const sampleRate = 44100;
+            const totalSamples = Math.ceil((maxDuration / 1000) * sampleRate);
+            const offlineAudioContext = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, totalSamples, sampleRate);
+
+            const offlineMasterGain = offlineAudioContext.createGain();
+            offlineMasterGain.gain.value = masterVolume / 100;
+            offlineMasterGain.connect(offlineAudioContext.destination);
+
+            pianoTrack.notes.forEach(note => {
+                const startTimeAudioContext = note.startTimeMs / 1000;
+                playPianoNote(note.midiNote, note.durationMs, note.velocity, startTimeAudioContext, offlineAudioContext);
+            });
+
+            try {
+                const renderedBuffer = await offlineAudioContext.startRendering();
+                const audioData = renderedBuffer.getChannelData(0);
+
+                const buffer = new ArrayBuffer(44 + audioData.length * 2);
+                const view = new DataView(buffer);
+
+                writeString(view, 0, 'RIFF');
+                view.setUint32(4, 36 + audioData.length * 2, true);
+                writeString(view, 8, 'WAVE');
+
+                writeString(view, 12, 'fmt ');
+                view.setUint32(16, 16, true);
+                view.setUint16(20, 1, true);
+                view.setUint16(22, 1, true);
+                view.setUint32(24, sampleRate, true);
+                view.setUint32(28, sampleRate * 1 * 2, true);
+                view.setUint16(32, 1 * 2, true);
+                view.setUint16(34, 16, true);
+
+                writeString(view, 36, 'data');
+                view.setUint32(40, audioData.length * 2, true);
+
+                floatTo16BitPCM(view, 44, audioData);
+
+                const blob = new Blob([view], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'mi_composicion_instrumental.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                updateStatus('Pista instrumental exportada a mi_composicion_instrumental.wav');
+
+            } catch (error) {
+                console.error('Error al renderizar o exportar WAV:', error);
+                updateStatus('Error al exportar la pista instrumental.');
+            }
+        }
+
+        // Helper functions for WAV encoding
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function floatTo16BitPCM(output, offset, input) {
+            for (let i = 0; i < input.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                output.setInt16(offset, s, true);
+            }
+        }
+
+        // Initialization on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize AudioContext and SpeechSynthesis
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            masterGainNode = audioContext.createGain();
+            masterGainNode.connect(audioContext.destination);
+
+            speechSynthesis = window.speechSynthesis;
+
+            const getVoices = () => {
+                availableVoices = speechSynthesis.getVoices();
+                // Set default Spanish voice for new custom voicebank if not already set
+                if (availableVoices.length > 0 && !newVoicebankBaseVoiceUri) {
+                    newVoicebankBaseVoiceUri = availableVoices.find(v => v.lang.startsWith('es'))?.voiceURI || availableVoices[0].voiceURI;
+                    newVoicebankBaseVoiceEl.value = newVoicebankBaseVoiceUri; // Update modal select
+                }
+                renderVoiceSelect(); // Update voice select options
+            };
+
+            getVoices();
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = getVoices;
+            }
+
+            // Load project on start
+            loadProject();
+
+            // Attach event listeners
+            document.getElementById('newProjectBtn').addEventListener('click', () => {
+                tracks = JSON.parse(JSON.stringify(initialTracks)); // Reset to initial
+                customVoicebanks = [];
+                updateStatus('Nuevo proyecto creado.');
+                saveProject();
+                handleTrackSelect('vocalTrack'); // Re-select vocal track to refresh UI
+            });
+            document.getElementById('openProjectBtn').addEventListener('click', loadProject);
+            document.getElementById('saveProjectBtn').addEventListener('click', saveProject);
+            document.getElementById('exportWavBtn').addEventListener('click', exportToWav);
+
+            document.getElementById('playBtn').addEventListener('click', () => handleAction('Play'));
+            document.getElementById('stopBtn').addEventListener('click', () => handleAction('Stop'));
+            document.getElementById('pauseBtn').addEventListener('click', () => handleAction('Pause'));
+            document.getElementById('rewindBtn').addEventListener('click', () => handleAction('Rewind')); // Cosmetic
+            document.getElementById('fastForwardBtn').addEventListener('click', () => handleAction('Fast Forward')); // Cosmetic
+
+            masterVolumeEl.addEventListener('input', (e) => {
+                masterVolume = parseFloat(e.target.value);
+                updateMasterVolumeUI();
+            });
+
+            globalPitchEl.addEventListener('input', (e) => {
+                globalPitch = parseFloat(e.target.value);
+                updateGlobalParametersUI();
+            });
+            globalDynamicsEl.addEventListener('input', (e) => {
+                globalDynamics = parseFloat(e.target.value);
+                updateGlobalParametersUI();
+            });
+            vibratoEl.addEventListener('input', (e) => {
+                vibrato = parseFloat(e.target.value);
+                updateGlobalParametersUI();
+            });
+            expressionEl.addEventListener('input', (e) => {
+                expression = parseFloat(e.target.value);
+                updateGlobalParametersUI();
+            });
+
+            // Voicebank/Instrument type change listeners
+            voiceSelectEl.addEventListener('change', (e) => {
+                const newVoiceUri = e.target.value;
+                const vocalTrack = tracks.find(t => t.id === 'vocalTrack');
+                if (vocalTrack) {
+                    vocalTrack.selectedVoiceUri = newVoiceUri;
+                }
+                updateStatus(`Voz TTS seleccionada: ${availableVoices.find(v => v.voiceURI === newVoiceUri)?.name || customVoicebanks.find(vb => vb.id === newVoiceUri)?.name || 'Predeterminada'}`);
+                saveProject();
+            });
+
+            instrumentTypeEl.addEventListener('change', (e) => {
+                const newInstrumentType = e.target.value;
+                const pianoTrack = tracks.find(t => t.id === 'pianoTrack');
+                if (pianoTrack) {
+                    pianoTrack.instrumentType = newInstrumentType;
+                }
+                updateStatus(`Tipo de instrumento seleccionado: ${newInstrumentType}`);
+                saveProject();
+            });
+
+            document.getElementById('createVoicebankBtn').addEventListener('click', () => showModal('voicebankCreatorModal'));
+
+            // Modal event listeners
+            document.getElementById('cancelLyricPromptBtn').addEventListener('click', () => hideModal('lyricPromptModal'));
+            document.getElementById('generateLyricBtn').addEventListener('click', generateLyrics);
+
+            document.getElementById('cancelMelodyPromptBtn').addEventListener('click', () => hideModal('melodyPromptModal'));
+            document.getElementById('suggestMelodyBtn').addEventListener('click', suggestMelody);
+
+            document.getElementById('cancelVoicebankCreatorBtn').addEventListener('click', () => hideModal('voicebankCreatorModal'));
+            document.getElementById('saveVoicebankBtn').addEventListener('click', createVoicebank);
+            newVoicebankPitchOffsetEl.addEventListener('input', (e) => newVoicebankPitchOffsetValueEl.textContent = parseFloat(e.target.value).toFixed(1));
+            newVoicebankRateOffsetEl.addEventListener('input', (e) => newVoicebankRateOffsetValueEl.textContent = parseFloat(e.target.value).toFixed(1));
+            document.getElementById('playVoicebankSampleBtn').addEventListener('click', playVoicebankSample);
+
+            // Initial render calls
+            renderTrackList();
+            renderNoteInputSection();
+            renderNoteList();
+            updateMasterVolumeUI();
+            updateGlobalParametersUI();
+        });
+    </script>
+</body>
+</html>
