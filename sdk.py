@@ -9,33 +9,30 @@ import soundfile as sf
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-# --- Aquí puedes cambiar a TensorFlow si lo prefieres ---
+# --- Elige el modelo real: VITS (muy usado en TTS/RVC) ---
 _USE_TORCH = True
 if _USE_TORCH:
     import torch
     import torch.nn as nn
     import torch.optim as optim
+
+    # --------- Modelo realista: VITS simplificado (NO producción, solo ejemplo) ---------
+    # En producción usarías un repo como https://github.com/jaywalnut310/vits
+    # Aquí definimos una red pequeña para demostración (ajusta a tu necesidad real)
+    class SimpleVITS(torch.nn.Module):
+        def __init__(self, input_dim=80, hidden=128):
+            super().__init__()
+            self.lstm = nn.LSTM(input_dim, hidden, num_layers=2, batch_first=True, bidirectional=False)
+            self.linear = nn.Linear(hidden, 1)  # salida: waveform mono
+        def forward(self, x):
+            # x: [batch, time, features] (ejemplo: melspectrogram o similar)
+            out, _ = self.lstm(x)
+            out = self.linear(out)
+            return out.squeeze(-1)
 else:
     import tensorflow as tf
     from tensorflow import keras
-
-# ---- Modelo de ejemplo (Autoencoder) ----
-class SimpleAutoencoderTorch(nn.Module):
-    def __init__(self, input_dim=16000, bottleneck=256):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, bottleneck),
-            nn.ReLU()
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(bottleneck, input_dim),
-            nn.Tanh()
-        )
-
-    def forward(self, x):
-        z = self.encoder(x)
-        out = self.decoder(z)
-        return out
+    # Puedes usar un modelo de TTS real de TensorFlow aquí
 
 # ---- OTO Entry ----
 class OtoEntry:
@@ -113,27 +110,52 @@ class VoicebankSDK:
             self.voice_samples[entry.alias] = data.astype(np.float32)
 
     def train_voice_model(self, epochs=15, out_model="voice.pth"):
-        sample_len = 16000
+        # Para VITS y modelos reales, deberías extraer features (ej: melspectrograms)
+        # Aquí simplemente usamos los datos raw como dummy
         X = np.stack([self.voice_samples[a] for a in self.voice_samples])
+        # Normalmente deberías usar librosa para extraer melspectrograms reales
+        # Ejemplo: X_mel = librosa.feature.melspectrogram(...)
+
         if _USE_TORCH:
-            self._train_torch(X, epochs, out_model)
+            self._train_vits(X, epochs, out_model)
+            self.export_onnx_vits(X, out_model.replace(".pth", ".onnx"))
         else:
             self._train_tensorflow(X, epochs, out_model)
+            # Puedes exportar a SavedModel/ONNX para TF aquí
 
-    def _train_torch(self, X, epochs, out_model):
+    def _train_vits(self, X, epochs, out_model):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        X_tensor = torch.tensor(X, dtype=torch.float32, device=device)
-        model = SimpleAutoencoderTorch(input_dim=X.shape[1], bottleneck=256).to(device)
+        # Dummy: conviértelo a [batch, time, features]
+        X_tensor = torch.tensor(X, dtype=torch.float32, device=device).unsqueeze(-1) # [N, time, 1]
+        model = SimpleVITS(input_dim=1, hidden=64).to(device)
         optimizer = optim.Adam(model.parameters(), lr=0.001)
         loss_fn = nn.MSELoss()
         model.train()
         for epoch in range(epochs):
             optimizer.zero_grad()
             output = model(X_tensor)
-            loss = loss_fn(output, X_tensor)
+            loss = loss_fn(output, X_tensor.squeeze(-1))
             loss.backward()
             optimizer.step()
         torch.save(model.state_dict(), self.root_dir / out_model)
+        self.last_trained_model = model
+        self.last_input_dim = 1
+        self.last_seq_len = X_tensor.shape[1]
+
+    def export_onnx_vits(self, X, out_onnx):
+        if not hasattr(self, "last_trained_model"):
+            raise RuntimeError("No hay modelo entrenado para exportar a ONNX.")
+        model = self.last_trained_model.cpu()
+        dummy_input = torch.rand(1, self.last_seq_len, self.last_input_dim)
+        torch.onnx.export(
+            model,
+            dummy_input,
+            str(self.root_dir / out_onnx),
+            input_names=["input"],
+            output_names=["output"],
+            dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+            opset_version=11
+        )
 
     def _train_tensorflow(self, X, epochs, out_model):
         input_dim = X.shape[1]
@@ -159,6 +181,9 @@ class VoicebankSDK:
             model_path = self.root_dir / "voice.pth"
             if model_path.exists():
                 zf.write(model_path, "voice.pth")
+            onnx_path = self.root_dir / "voice.onnx"
+            if onnx_path.exists():
+                zf.write(onnx_path, "voice.onnx")
             tf_folder = self.root_dir / "voice_tf_model"
             if tf_folder.exists():
                 for foldername, subfolders, filenames in os.walk(tf_folder):
@@ -175,7 +200,7 @@ class VoicebankSDK:
 class KawaiiVoicebankGUI(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("HiroshiLOID Official SDK 🎵")
+        self.setWindowTitle("🎀 UTAU HLVB Kawaii Voicebank SDK 🎵")
         self.setStyleSheet("background: #f5f7fa;")
 
         # Kawaii Title
