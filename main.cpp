@@ -215,7 +215,9 @@ public:
         // Menubar
         QMenuBar* menubar = new QMenuBar(this);
         QMenu* archivoMenu = menubar->addMenu("Archivo");
+        QAction* abrirAction = new QAction("Abrir", this);
         QAction* guardarAction = new QAction("Guardar", this);
+        archivoMenu->addAction(abrirAction);
         archivoMenu->addAction(guardarAction);
         mainLayout->setMenuBar(menubar);
 
@@ -252,6 +254,7 @@ public:
         connect(voicebank, &Voicebank::errorOccurred, this, &KawaiiMainWindow::onError);
 
         connect(guardarAction, &QAction::triggered, this, &KawaiiMainWindow::onGuardarHL);
+        connect(abrirAction, &QAction::triggered, this, &KawaiiMainWindow::onAbrirHL);
 
         // Organizar la interfaz
         QSplitter* splitter = new QSplitter(Qt::Vertical, this);
@@ -348,6 +351,13 @@ public slots:
         if (!fileName.endsWith(".hl"))
             fileName += ".hl";
         saveHLFile(fileName);
+    }
+
+    void onAbrirHL() {
+        QString fileName = QFileDialog::getOpenFileName(this, "Abrir archivo HL", QString(), "Archivo HL (*.hl)");
+        if (!fileName.isEmpty()) {
+            loadHLFile(fileName);
+        }
     }
 
     // Utilidad para desempaquetar el .hlvb con info.json, oto.ini y voice.pth
