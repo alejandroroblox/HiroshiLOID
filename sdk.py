@@ -175,7 +175,7 @@ class VoicebankSDK:
 class KawaiiVoicebankGUI(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("🎀 UTAU HLVB Kawaii Voicebank SDK 🎵")
+        self.setWindowTitle("HiroshiLOID Official SDK 🎵")
         self.setStyleSheet("background: #f5f7fa;")
 
         # Kawaii Title
