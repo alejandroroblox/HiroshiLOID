@@ -1,40 +1,66 @@
 #pragma once
+#include <QObject>
+#include <QMap>
+#include <QString>
+#include <QFile>
+#include <QTextStream>
+#include <QJsonObject>
+#include <QJsonDocument>
 #include "PhonemeEntry.h"
-#include <map>
-#include <fstream>
-#include <iostream>
 
-class Voicebank {
+// Voicebank que soporta cargar .hlvb (zip con info.json, oto.ini y voice.pth)
+class Voicebank : public QObject {
+    Q_OBJECT
 public:
-    // Map from alias to PhonemeEntry
-    std::map<std::string, PhonemeEntry> phonemeMap;
+    explicit Voicebank(QObject* parent = nullptr) : QObject(parent) {}
 
-    // Load oto.ini from path
-    void load(const std::string& otoIniPath) {
-        std::ifstream file(otoIniPath);
-        if (!file.is_open()) {
-            throw std::runtime_error("Failed to open oto.ini: " + otoIniPath);
+    QMap<QString, PhonemeEntry*> phonemeMap;
+
+    // Ruta al modelo deep learning (voice.pth), para pasar a Python/TensorFlow/PyTorch
+    QString deepModelPath;
+    // Info opcional de info.json
+    QJsonObject metaInfo;
+
+    // Carga oto.ini (usado tras extraer un .hlvb)
+    Q_INVOKABLE void loadFromOtoIni(const QString& otoIniPath) {
+        QFile file(otoIniPath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            emit errorOccurred("No se pudo abrir oto.ini: " + otoIniPath);
+            return;
         }
-        std::string line;
-        size_t lineNum = 0;
-        while (std::getline(file, line)) {
+        QTextStream in(&file);
+        int lineNum = 0;
+        while (!in.atEnd()) {
+            QString line = in.readLine();
             ++lineNum;
-            if (line.empty() || line[0] == '#') continue; // skip comments and empty lines
+            if (line.trimmed().isEmpty() || line.trimmed().startsWith("#")) continue;
             try {
-                PhonemeEntry entry = PhonemeEntry::parseOtoLine(line);
-                phonemeMap[entry.alias] = entry;
+                PhonemeEntry* entry = PhonemeEntry::parseOtoLine(line, this);
+                phonemeMap[entry->alias] = entry;
             } catch (const std::exception& e) {
-                std::cerr << "Error parsing oto.ini line " << lineNum << ": " << e.what() << std::endl;
+                emit errorOccurred(QString("Error parsing oto.ini line %1: %2").arg(lineNum).arg(e.what()));
             }
         }
+        emit voicebankLoaded();
     }
 
-    // Get PhonemeEntry by alias
-    const PhonemeEntry* getPhonemeEntry(const std::string& alias) const {
-        auto it = phonemeMap.find(alias);
-        if (it != phonemeMap.end()) {
-            return &(it->second);
+    // Carga un info.json (opcional, para mostrar metadatos)
+    Q_INVOKABLE void loadInfoJson(const QString& infoJsonPath) {
+        QFile file(infoJsonPath);
+        if (file.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            if (doc.isObject()) {
+                metaInfo = doc.object();
+            }
+            file.close();
         }
-        return nullptr;
     }
+
+    Q_INVOKABLE PhonemeEntry* getPhonemeEntry(const QString& alias) const {
+        return phonemeMap.value(alias, nullptr);
+    }
+
+signals:
+    void errorOccurred(const QString& message);
+    void voicebankLoaded();
 };
