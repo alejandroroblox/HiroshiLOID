@@ -203,6 +203,117 @@ private:
 };
 // --- End Piano Roll Implementation ---
 
+// --- Simple UTAU-like Voice Synthesis for Exporting WAV ---
+#include <QMap>
+#include <QFile>
+#include <QDir>
+#include <QAudioBuffer>
+#include <QtMath>
+
+// Estructura básica para OTO entries (de tu voicebank)
+struct OtoEntry {
+    QString alias;
+    QString wavPath;
+    int offsetMs = 0;
+    int lengthMs = 0;
+};
+
+bool exportVoiceWav(const QString& filename, const std::vector<PianoNote>& notes, const QMap<QString, OtoEntry>& otoMap, int bpm = 120, int sampleRate = 44100) {
+    double tickLen = 60.0 / (bpm * 480.0);
+    int lastTick = 0;
+    for (const auto& n : notes) {
+        int end = n.start + n.length;
+        if (end > lastTick) lastTick = end;
+    }
+    int totalSamples = int((lastTick * tickLen) * sampleRate) + sampleRate;
+    std::vector<float> audio(totalSamples, 0.0f);
+
+    for (const auto& note : notes) {
+        if (!otoMap.contains(note.lyric)) continue;
+        const OtoEntry& oto = otoMap[note.lyric];
+
+        // Leer el WAV del fonema
+        QFile wavFile(oto.wavPath);
+        if (!wavFile.open(QIODevice::ReadOnly)) continue;
+        QByteArray wavData = wavFile.readAll();
+        wavFile.close();
+        if (wavData.size() < 44) continue;
+
+        // Extraer PCM de 16 bits mono (esto es MUY SIMPLIFICADO; usa una lib real para robustez)
+        int dataOffset = 44;
+        int sampleLen = (wavData.size() - dataOffset) / 2;
+        std::vector<float> sampleData(sampleLen, 0.0f);
+        for (int i = 0; i < sampleLen; ++i) {
+            int16_t s = *(const int16_t*)(wavData.constData() + dataOffset + i * 2);
+            sampleData[i] = float(s) / 32768.0f;
+        }
+
+        // Recorta según offset/length del OTO.ini
+        int startSample = sampleRate * oto.offsetMs / 1000;
+        int lengthSample = oto.lengthMs > 0 ? sampleRate * oto.lengthMs / 1000 : sampleData.size() - startSample;
+        if (startSample + lengthSample > sampleData.size())
+            lengthSample = sampleData.size() - startSample;
+        if (lengthSample < 1) continue;
+
+        std::vector<float> region(sampleData.begin() + startSample, sampleData.begin() + startSample + lengthSample);
+
+        // Ajusta duración (time-stretch simple: repite/recorta)
+        int noteSamples = int(note.length * tickLen * sampleRate);
+        std::vector<float> noteAudio(noteSamples, 0.0f);
+        for (int i = 0; i < noteSamples; ++i) {
+            noteAudio[i] = region[(i * region.size()) / noteSamples];
+        }
+
+        // Ajusta pitch (NO real, pero cambia velocidad de reproducción para demostrar)
+        double basePitch = 60; // puedes leer desde otoMap o asumir C4
+        double pitchRatio = std::pow(2.0, (note.pitch - basePitch) / 12.0);
+        for (int i = 0; i < noteSamples; ++i) {
+            int srcIdx = int(i / pitchRatio);
+            if (srcIdx < noteAudio.size())
+                noteAudio[i] = noteAudio[srcIdx];
+        }
+
+        // Mezcla al buffer final
+        int outStart = int(note.start * tickLen * sampleRate);
+        for (int i = 0; i < noteSamples && outStart + i < audio.size(); ++i)
+            audio[outStart + i] += noteAudio[i];
+    }
+
+    // Normalizar y guardar como WAV PCM
+    float max = 0;
+    for (auto v : audio) if (qAbs(v) > max) max = qAbs(v);
+    if (max > 0.99f) for (auto& v : audio) v /= max;
+
+    QFile file(filename);
+    if (!file.open(QIODevice::WriteOnly)) return false;
+    int dataChunkSize = int(audio.size()) * 2;
+    int fileSize = 44 + dataChunkSize;
+    file.write("RIFF", 4);
+    file.write(reinterpret_cast<const char*>(&fileSize), 4);
+    file.write("WAVEfmt ", 8);
+    int fmtSize = 16;
+    file.write(reinterpret_cast<const char*>(&fmtSize), 4);
+    int16_t audioFormat = 1, numChannels = 1, bitsPerSample = 16;
+    file.write(reinterpret_cast<const char*>(&audioFormat), 2);
+    file.write(reinterpret_cast<const char*>(&numChannels), 2);
+    file.write(reinterpret_cast<const char*>(&sampleRate), 4);
+    int byteRate = sampleRate * numChannels * bitsPerSample / 8;
+    file.write(reinterpret_cast<const char*>(&byteRate), 4);
+    int16_t blockAlign = numChannels * bitsPerSample / 8;
+    file.write(reinterpret_cast<const char*>(&blockAlign), 2);
+    file.write(reinterpret_cast<const char*>(&bitsPerSample), 2);
+    file.write("data", 4);
+    file.write(reinterpret_cast<const char*>(&dataChunkSize), 4);
+    for (auto v : audio) {
+        int16_t s = int16_t(std::max(-1.0f, std::min(1.0f, v)) * 32767.0f);
+        file.putChar(s & 0xFF);
+        file.putChar((s >> 8) & 0xFF);
+    }
+    file.close();
+    return true;
+}
+// --- End Simple UTAU-like Voice Synthesis ---
+
 class KawaiiMainWindow : public QWidget {
     Q_OBJECT
 public:
@@ -212,13 +323,14 @@ public:
 
         QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
-        // Menubar
         QMenuBar* menubar = new QMenuBar(this);
         QMenu* archivoMenu = menubar->addMenu("Archivo");
         QAction* abrirAction = new QAction("Abrir", this);
         QAction* guardarAction = new QAction("Guardar", this);
+        QAction* exportarWavAction = new QAction("Exportar WAV (voz real)", this);
         archivoMenu->addAction(abrirAction);
         archivoMenu->addAction(guardarAction);
+        archivoMenu->addAction(exportarWavAction);
         mainLayout->setMenuBar(menubar);
 
         QLabel* kawaiiTitle = new QLabel("🎀 UTAU Kawaii Synth 🎵", this);
@@ -231,7 +343,6 @@ public:
         statusLabel = new QLabel("¡Bienvenida! Por favor carga un voicebank. (◕‿◕✿)", this);
         statusLabel->setStyleSheet("font-size: 16px; color: #a7a7a7;");
 
-        // Tabla de fonemas
         phonemeTable = new QTableWidget(this);
         phonemeTable->setColumnCount(3);
         phonemeTable->setHorizontalHeaderLabels({"Alias", "Archivo WAV", "Offset (ms)"});
@@ -240,13 +351,11 @@ public:
         phonemeTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
         phonemeTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-        // Piano Roll widget estilo VOCALOID6
         pianoRoll = new PianoRollWidget(this);
         pianoRoll->setMinimumHeight(350);
 
         connect(pianoRoll, &PianoRollWidget::notesChanged, this, [this](const std::vector<PianoNote>& notes){
             statusLabel->setText("¡Notas actualizadas! Haz doble clic en una nota para editar letra/fonema.");
-            // Aquí podrías actualizar tu motor de síntesis con las notas nuevas.
         });
 
         connect(loadHlVoicebankButton, &QPushButton::clicked, this, &KawaiiMainWindow::onLoadHlVoicebank);
@@ -256,7 +365,8 @@ public:
         connect(guardarAction, &QAction::triggered, this, &KawaiiMainWindow::onGuardarHL);
         connect(abrirAction, &QAction::triggered, this, &KawaiiMainWindow::onAbrirHL);
 
-        // Organizar la interfaz
+        connect(exportarWavAction, &QAction::triggered, this, &KawaiiMainWindow::onExportarWav);
+
         QSplitter* splitter = new QSplitter(Qt::Vertical, this);
         QWidget* topWidget = new QWidget;
         QVBoxLayout* topLayout = new QVBoxLayout(topWidget);
@@ -270,7 +380,6 @@ public:
 
         mainLayout->addWidget(splitter);
 
-        // Soporta doble click en archivos .hl (json) en el explorador
         setAcceptDrops(true);
     }
 
@@ -360,7 +469,28 @@ public slots:
         }
     }
 
-    // Utilidad para desempaquetar el .hlvb con info.json, oto.ini y voice.pth
+    void onExportarWav() {
+        QString fileName = QFileDialog::getSaveFileName(this, "Exportar WAV (voz real)", "", "Audio WAV (*.wav)");
+        if (fileName.isEmpty()) return;
+        // Voicebank debe tener un map alias->OtoEntry
+        QMap<QString, OtoEntry> otoMap;
+        // Construye el otoMap desde tu Voicebank
+        for (auto it = voicebank->phonemeMap.begin(); it != voicebank->phonemeMap.end(); ++it) {
+            PhonemeEntry* entry = it.value();
+            OtoEntry o;
+            o.alias = entry->alias;
+            o.wavPath = entry->waveFilePath;
+            o.offsetMs = entry->offset;
+            o.lengthMs = entry->consonant; // o usa entry->cutoff, etc.
+            otoMap.insert(o.alias, o);
+        }
+        if (exportVoiceWav(fileName, pianoRoll->notes(), otoMap)) {
+            QMessageBox::information(this, "Exportar WAV", "¡Archivo WAV exportado con voz real!");
+        } else {
+            QMessageBox::warning(this, "Exportar WAV", "Error al exportar WAV.");
+        }
+    }
+
     bool unzipHlVoicebank(const QString& zipPath, QString& outExtractedDir, QString& outInfoJson, QString& outOtoIni, QString& outVoiceModel) {
         QTemporaryDir* tempDir = new QTemporaryDir();
         if (!tempDir->isValid())
