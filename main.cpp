@@ -18,11 +18,14 @@
 #include <QMouseEvent>
 #include <QProcess>
 #include <QTemporaryFile>
+#include <QTemporaryDir>
 #include <cmath>
 #include <vector>
 #include <algorithm>
 #include <optional>
 #include <QDir>
+#include <QComboBox>
+#include <QSet>
 #include "Voicebank.h"
 #include "WavUtils.h"
 #include "PhonemeEntry.h"
@@ -30,52 +33,86 @@
 // --- ONNX Runtime Integration ---
 #include <onnxruntime_cxx_api.h>
 
-// --- Piano Roll Implementation (VOCALOID6 style) ---
-// ... (tu implementación igual que antes, omitida por brevedad)
-// --- End Piano Roll Implementation ---
-
 struct PianoNote {
-    int pitch;           // MIDI note number
-    int start;           // In "ticks" (e.g. 480 = quarter note)
-    int length;          // In "ticks"
-    QString lyric;       // Phoneme or syllable
+    int pitch;
+    int start;
+    int length;
+    QString lyric;
 };
 
-// Helper: Convert .pth (PyTorch) to .onnx (for this demo, requires prior conversion)
-QString pthToOnnx(const QString& pthPath) {
-    // Busca un .onnx con el mismo nombre en el mismo folder, o lanza advertencia
-    QString onnxPath = pthPath;
-    if (onnxPath.endsWith(".pth"))
-        onnxPath.replace(".pth", ".onnx");
-    if (QFile::exists(onnxPath))
-        return onnxPath;
-    QMessageBox::warning(nullptr, "ONNX Runtime", "No se encontró el archivo .onnx correspondiente al modelo .pth.\nConvierte primero tu modelo .pth a .onnx (por ejemplo, usando torch.onnx.export en Python).");
-    return "";
+// Dummy PianoRollWidget for demo
+class PianoRollWidget : public QWidget {
+    Q_OBJECT
+public:
+    PianoRollWidget(QWidget* parent = nullptr) : QWidget(parent) {}
+    std::vector<PianoNote> notes() const { return {}; }
+    void setNotes(const std::vector<PianoNote>&) {}
+signals:
+    void notesChanged(const std::vector<PianoNote>&);
+};
+
+// Helper: Extrae .hlvb (zip) a temporal y retorna ruta de voice.pth/.onnx/info.json/oto.ini
+bool extractHlVoicebank(const QString& hlvbPath, QString& outTempDir, QString& outVoicepth, QString& outOnnx, QString& outInfoJson, QString& outOtoIni) {
+    QTemporaryDir* tempDir = new QTemporaryDir();
+    if (!tempDir->isValid()) return false;
+    outTempDir = tempDir->path();
+
+    // Usa unzip para extraer el .hlvb
+    QProcess unzipProc;
+    unzipProc.setWorkingDirectory(outTempDir);
+    unzipProc.start("unzip", QStringList() << hlvbPath);
+    unzipProc.waitForFinished(-1);
+
+    if (unzipProc.exitStatus() != QProcess::NormalExit || unzipProc.exitCode() != 0) {
+        qWarning() << "Unzip failed:" << unzipProc.readAllStandardError();
+        return false;
+    }
+
+    // Busca voice.pth, voice.onnx, info.json, oto.ini en el directorio extraído
+    QDir dir(outTempDir);
+    QStringList files = dir.entryList(QDir::Files | QDir::NoDotAndDotDot | QDir::AllDirs, QDir::Name);
+    outVoicepth = outOnnx = outInfoJson = outOtoIni = "";
+
+    for (const QString& file : files) {
+        if (file.endsWith("voice.pth")) outVoicepth = dir.absoluteFilePath(file);
+        if (file.endsWith("voice.onnx")) outOnnx = dir.absoluteFilePath(file);
+        if (file == "info.json") outInfoJson = dir.absoluteFilePath(file);
+        if (file == "oto.ini") outOtoIni = dir.absoluteFilePath(file);
+    }
+    // Si hay subcarpetas, busca recursivamente
+    QStringList subdirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    for (const QString& subdir : subdirs) {
+        QDir sub(dir.absoluteFilePath(subdir));
+        for (const QString& file : sub.entryList(QDir::Files)) {
+            if (file.endsWith("voice.pth")) outVoicepth = sub.absoluteFilePath(file);
+            if (file.endsWith("voice.onnx")) outOnnx = sub.absoluteFilePath(file);
+            if (file == "info.json") outInfoJson = sub.absoluteFilePath(file);
+            if (file == "oto.ini") outOtoIni = sub.absoluteFilePath(file);
+        }
+    }
+
+    return QFile::exists(outVoicepth) && QFile::exists(outOnnx);
 }
 
 // --- IA Voice Synthesis: ONNX Runtime (requiere .onnx del modelo IA) ---
 bool exportVoiceAIWav_ONNX(const QString& filename, const std::vector<PianoNote>& notes, const QString& onnxPath, int bpm = 120, int sampleRate = 44100) {
     if (!QFile::exists(onnxPath)) return false;
     try {
-        // Inicializa ONNX Runtime
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "kawaii-onnx");
         Ort::SessionOptions session_options;
         session_options.SetIntraOpNumThreads(1);
         Ort::Session session(env, onnxPath.toStdString().c_str(), session_options);
 
-        // Prepara entrada: convierte las notas a un arreglo de floats (esto depende de tu modelo)
-        // Ejemplo: [start, length, pitch, lyric_id, ...] para cada nota
-        // Aquí usamos solo pitch y duración; para un modelo real, adapta a lo que tu modelo espera
+        // Prepara entrada: convierte las notas a features reales para tu modelo
         std::vector<float> note_feats;
         for (const auto& n : notes) {
             note_feats.push_back(float(n.start));
             note_feats.push_back(float(n.length));
             note_feats.push_back(float(n.pitch));
-            // Si tu modelo usa IDs de fonema, aquí deberías mapear n.lyric a un ID
+            // Si tu modelo ONNX espera mels, fonemas, etc, aquí conviértelos
         }
 
-        // Prepara tensores de entrada
-        std::vector<int64_t> note_shape = { int64_t(notes.size()), 3 }; // [num_notes, 3]
+        std::vector<int64_t> note_shape = { int64_t(notes.size()), 3 };
         Ort::AllocatorWithDefaultOptions allocator;
         std::vector<const char*> input_names = { session.GetInputName(0, allocator) };
         std::vector<const char*> output_names = { session.GetOutputName(0, allocator) };
@@ -83,14 +120,11 @@ bool exportVoiceAIWav_ONNX(const QString& filename, const std::vector<PianoNote>
         Ort::MemoryInfo mem_info("Cpu", OrtAllocatorType::OrtArenaAllocator, 0, OrtMemTypeDefault);
         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(mem_info, note_feats.data(), note_feats.size(), note_shape.data(), note_shape.size());
 
-        // Ejecuta inferencia
         auto output_tensors = session.Run(Ort::RunOptions{nullptr}, input_names.data(), &input_tensor, 1, output_names.data(), 1);
 
-        // Recupera salida: asume que el modelo devuelve un array [num_samples] de float32 (PCM -1..1)
         float* audio_data = output_tensors[0].GetTensorMutableData<float>();
         size_t num_samples = output_tensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
 
-        // Normalizar y guardar como WAV PCM
         QFile file(filename);
         if (!file.open(QIODevice::WriteOnly)) return false;
         int dataChunkSize = int(num_samples) * 2;
@@ -124,7 +158,6 @@ bool exportVoiceAIWav_ONNX(const QString& filename, const std::vector<PianoNote>
         return false;
     }
 }
-// --- End IA Voice Synthesis ONNX ---
 
 class KawaiiMainWindow : public QWidget {
     Q_OBJECT
@@ -139,9 +172,11 @@ public:
         QMenu* archivoMenu = menubar->addMenu("Archivo");
         QAction* abrirAction = new QAction("Abrir", this);
         QAction* guardarAction = new QAction("Guardar", this);
+        QAction* cargarHlVbAction = new QAction("Cargar voicebank (.hlvb)", this);
         QAction* exportarWavAction = new QAction("Exportar WAV (voz IA ONNX)", this);
         archivoMenu->addAction(abrirAction);
         archivoMenu->addAction(guardarAction);
+        archivoMenu->addAction(cargarHlVbAction);
         archivoMenu->addAction(exportarWavAction);
         mainLayout->setMenuBar(menubar);
 
@@ -149,10 +184,7 @@ public:
         kawaiiTitle->setStyleSheet("font-size: 32px; font-family: Comic Sans MS, cursive; color: #ff69b4; text-align: center;");
         kawaiiTitle->setAlignment(Qt::AlignCenter);
 
-        QPushButton* loadVoicepthButton = new QPushButton("Selecciona voice.pth (modelo IA)", this);
-        loadVoicepthButton->setStyleSheet("background: #ffe4ec; border-radius: 16px; font-size: 16px;");
-
-        statusLabel = new QLabel("¡Bienvenida! Por favor selecciona tu modelo voice.pth (y ten el .onnx en la misma carpeta). (◕‿◕✿)", this);
+        statusLabel = new QLabel("¡Bienvenida! Por favor carga un voicebank .hlvb con modelo IA (pth+onnx). (◕‿◕✿)", this);
         statusLabel->setStyleSheet("font-size: 16px; color: #a7a7a7;");
 
         phonemeTable = new QTableWidget(this);
@@ -166,59 +198,128 @@ public:
         pianoRoll = new PianoRollWidget(this);
         pianoRoll->setMinimumHeight(350);
 
-        connect(pianoRoll, &PianoRollWidget::notesChanged, this, [this](const std::vector<PianoNote>& notes){
-            statusLabel->setText("¡Notas actualizadas! Haz doble clic en una nota para editar letra/fonema.");
-        });
+        // --- NUEVO: Listado de HLVBs ---
+        hlvbCombo = new QComboBox(this);
+        hlvbCombo->setStyleSheet("font-size: 18px; background: #ffe4ec; border-radius: 12px;");
+        connect(hlvbCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &KawaiiMainWindow::onSelectHlvbCombo);
 
-        connect(loadVoicepthButton, &QPushButton::clicked, this, &KawaiiMainWindow::onLoadVoicepth);
-
-        connect(guardarAction, &QAction::triggered, this, &KawaiiMainWindow::onGuardarHL);
-        connect(abrirAction, &QAction::triggered, this, &KawaiiMainWindow::onAbrirHL);
-
-        connect(exportarWavAction, &QAction::triggered, this, &KawaiiMainWindow::onExportarWavAI);
-
+        // Layout
         QSplitter* splitter = new QSplitter(Qt::Vertical, this);
         QWidget* topWidget = new QWidget;
         QVBoxLayout* topLayout = new QVBoxLayout(topWidget);
         topLayout->addWidget(kawaiiTitle);
-        topLayout->addWidget(loadVoicepthButton);
+        topLayout->addWidget(hlvbCombo);
         topLayout->addWidget(statusLabel);
         topLayout->addWidget(phonemeTable);
         splitter->addWidget(topWidget);
         splitter->addWidget(pianoRoll);
         splitter->setStretchFactor(1, 2);
-
         mainLayout->addWidget(splitter);
 
+        connect(cargarHlVbAction, &QAction::triggered, this, &KawaiiMainWindow::onLoadHlVoicebank);
+        connect(guardarAction, &QAction::triggered, this, &KawaiiMainWindow::onGuardarHL);
+        connect(abrirAction, &QAction::triggered, this, &KawaiiMainWindow::onAbrirHL);
+        connect(exportarWavAction, &QAction::triggered, this, &KawaiiMainWindow::onExportarWavAI);
+
         setAcceptDrops(true);
+
+        // --- Mostrar todos los HLVB al iniciar ---
+        listAndShowHlvbs();
     }
 
-protected:
-    void dragEnterEvent(QDragEnterEvent* event) override {
-        if (event->mimeData()->hasUrls()) {
-            QList<QUrl> urls = event->mimeData()->urls();
-            if (!urls.isEmpty() && urls[0].toLocalFile().endsWith(".hl")) {
-                event->acceptProposedAction();
+    void listAndShowHlvbs() {
+        hlvbCombo->clear();
+        hlvbPaths.clear();
+
+        // Busca .hlvb en ~/.kawaii_hlvb y en el directorio actual
+        QStringList searchDirs = { QDir::homePath() + "/.kawaii_hlvb", QDir::currentPath() };
+        QSet<QString> seen;
+        for (const QString& d : searchDirs) {
+            QDir dir(d);
+            for (const QString& file : dir.entryList(QStringList() << "*.hlvb", QDir::Files)) {
+                QString abs = dir.absoluteFilePath(file);
+                if (!seen.contains(abs)) {
+                    hlvbPaths << abs;
+                    seen.insert(abs);
+                }
             }
         }
-    }
-    void dropEvent(QDropEvent* event) override {
-        QList<QUrl> urls = event->mimeData()->urls();
-        if (!urls.isEmpty()) {
-            QString filePath = urls[0].toLocalFile();
-            if (filePath.endsWith(".hl")) {
-                loadHLFile(filePath);
+        if (!hlvbPaths.isEmpty()) {
+            for (const QString& path : hlvbPaths) {
+                QString name = QFileInfo(path).baseName();
+                hlvbCombo->addItem(name, path);
             }
+            hlvbCombo->setCurrentIndex(0);
+            onSelectHlvbCombo(0);
+        } else {
+            hlvbCombo->addItem("No hay voicebanks .hlvb encontrados");
+            statusLabel->setText("No se encontró voicebank HLVB instalado. ¡Crea o importa uno kawaii!");
         }
     }
 
-public slots:
-    void onLoadVoicepth() {
-        QString file = QFileDialog::getOpenFileName(this, "Selecciona voice.pth", QString(), "Modelo IA (*.pth)");
+    void onSelectHlvbCombo(int idx) {
+        if (idx < 0 || idx >= hlvbPaths.size())
+            return;
+        QString found = hlvbPaths[idx];
+        QString tempDir, tempPth, tempOnnx, tempInfo, tempOto;
+        if (extractHlVoicebank(found, tempDir, tempPth, tempOnnx, tempInfo, tempOto)) {
+            QFile infoFile(tempInfo);
+            if (infoFile.open(QIODevice::ReadOnly)) {
+                QJsonDocument doc = QJsonDocument::fromJson(infoFile.readAll());
+                if (doc.isObject()) {
+                    QJsonObject obj = doc.object();
+                    QString name = obj.value("name").toString();
+                    QString author = obj.value("author").toString();
+                    QString desc = obj.value("description").toString();
+                    statusLabel->setText("HLVB instalado: " + name + " por " + author + "\n" + desc);
+                }
+                infoFile.close();
+            }
+            voicebank->loadFromOtoIni(tempOto);
+            phonemeTable->setRowCount(0);
+            int row = 0;
+            for (auto it = voicebank->phonemeMap.begin(); it != voicebank->phonemeMap.end(); ++it) {
+                PhonemeEntry* entry = it.value();
+                phonemeTable->insertRow(row);
+                phonemeTable->setItem(row, 0, new QTableWidgetItem(entry->alias));
+                phonemeTable->setItem(row, 1, new QTableWidgetItem(entry->waveFilePath));
+                phonemeTable->setItem(row, 2, new QTableWidgetItem(QString::number(entry->offset)));
+                ++row;
+            }
+            extractedDir = tempDir; extractedVoicepth = tempPth; extractedOnnx = tempOnnx; extractedInfoJson = tempInfo; extractedOtoIni = tempOto;
+        }
+    }
+
+    void onLoadHlVoicebank() {
+        QString file = QFileDialog::getOpenFileName(this, "Selecciona voicebank (.hlvb)", QString(), "Voicebank HLVB (*.hlvb)");
         if (file.isEmpty()) return;
-        loadedVoicepthPath = file;
-        loadedOnnxPath = pthToOnnx(loadedVoicepthPath);
-        statusLabel->setText("Modelo voice.pth cargado: " + file + "\nModelo .onnx: " + loadedOnnxPath);
+        if (!extractHlVoicebank(file, extractedDir, extractedVoicepth, extractedOnnx, extractedInfoJson, extractedOtoIni)) {
+            QMessageBox::critical(this, "Error", "No se pudo importar el .hlvb. ¿Contiene voice.pth y voice.onnx?");
+            return;
+        }
+        QFile infoFile(extractedInfoJson);
+        if (infoFile.open(QIODevice::ReadOnly)) {
+            QJsonDocument doc = QJsonDocument::fromJson(infoFile.readAll());
+            if (doc.isObject()) {
+                QJsonObject obj = doc.object();
+                QString name = obj.value("name").toString();
+                QString author = obj.value("author").toString();
+                QString desc = obj.value("description").toString();
+                statusLabel->setText("Voicebank: " + name + " por " + author + "\n" + desc);
+            }
+            infoFile.close();
+        }
+        voicebank->loadFromOtoIni(extractedOtoIni);
+        phonemeTable->setRowCount(0);
+        int row = 0;
+        for (auto it = voicebank->phonemeMap.begin(); it != voicebank->phonemeMap.end(); ++it) {
+            PhonemeEntry* entry = it.value();
+            phonemeTable->insertRow(row);
+            phonemeTable->setItem(row, 0, new QTableWidgetItem(entry->alias));
+            phonemeTable->setItem(row, 1, new QTableWidgetItem(entry->waveFilePath));
+            phonemeTable->setItem(row, 2, new QTableWidgetItem(QString::number(entry->offset)));
+            ++row;
+        }
     }
 
     void onGuardarHL() {
@@ -238,16 +339,16 @@ public slots:
     }
 
     void onExportarWavAI() {
-        if (loadedOnnxPath.isEmpty()) {
-            QMessageBox::warning(this, "Exportar WAV", "Por favor selecciona tu modelo voice.pth y asegúrate de tener el .onnx correspondiente.");
+        if (extractedOnnx.isEmpty()) {
+            QMessageBox::warning(this, "Exportar WAV", "Debes cargar un voicebank .hlvb con voice.onnx exportado.");
             return;
         }
         QString fileName = QFileDialog::getSaveFileName(this, "Exportar WAV (voz IA ONNX)", "", "Audio WAV (*.wav)");
         if (fileName.isEmpty()) return;
-        if (exportVoiceAIWav_ONNX(fileName, pianoRoll->notes(), loadedOnnxPath)) {
+        if (exportVoiceAIWav_ONNX(fileName, pianoRoll->notes(), extractedOnnx)) {
             QMessageBox::information(this, "Exportar WAV", "¡Archivo WAV exportado con voz IA (ONNX)!");
         } else {
-            QMessageBox::warning(this, "Exportar WAV", "Error al exportar WAV. Asegúrate de tener un modelo IA .onnx válido.");
+            QMessageBox::warning(this, "Exportar WAV", "Error al exportar WAV. ¿voice.onnx es válido?");
         }
     }
 
@@ -313,8 +414,9 @@ private:
     QTableWidget* phonemeTable;
     QLabel* statusLabel;
     PianoRollWidget* pianoRoll;
-    QString loadedVoicepthPath;
-    QString loadedOnnxPath;
+    QComboBox* hlvbCombo;
+    QStringList hlvbPaths;
+    QString extractedDir, extractedVoicepth, extractedOnnx, extractedInfoJson, extractedOtoIni;
 };
 
 #include "main.moc"
