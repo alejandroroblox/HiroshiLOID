@@ -164,7 +164,7 @@ class KawaiiMainWindow : public QWidget {
 public:
     KawaiiMainWindow(QWidget* parent = nullptr)
         : QWidget(parent), voicebank(new Voicebank(this)), wavUtils(new WavUtils(this)) {
-        this->setWindowTitle(QString::fromUtf8("UTAU Kawaii Synth 🎀"));
+        this->setWindowTitle(QString::fromUtf8("HiroshiLOID"));
 
         QVBoxLayout* mainLayout = new QVBoxLayout(this);
 
@@ -180,7 +180,7 @@ public:
         archivoMenu->addAction(exportarWavAction);
         mainLayout->setMenuBar(menubar);
 
-        QLabel* kawaiiTitle = new QLabel("🎀 UTAU Kawaii Synth 🎵", this);
+        QLabel* kawaiiTitle = new QLabel("HiroshiLOID", this);
         kawaiiTitle->setStyleSheet("font-size: 32px; font-family: Comic Sans MS, cursive; color: #ff69b4; text-align: center;");
         kawaiiTitle->setAlignment(Qt::AlignCenter);
 
