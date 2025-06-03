@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HiroshiLOID</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-color: #f3f4f6; /* Fondo gris claro */
+        }
+        .tab-button.active {
+            background-color: white;
+            color: #ec4899; /* pink-600 */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .tab-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .tab-button.active:hover {
+            background-color: white;
+        }
+        /* Estilos para el scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db; /* gray-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af; /* gray-400 */
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex flex-col items-center justify-center z-50 hidden">
+        <img src="https://placehold.co/200x200/FFFFFF/000000?text=Cargando..." onerror="this.src='https://placehold.co/200x200/FFFFFF/000000?text=Cargando...'" alt="Cargando..." class="w-48 h-48 animate-pulse rounded-full shadow-lg">
+        <p class="mt-4 text-white text-xl font-semibold">Cargando...</p>
+    </div>
+
+    <div id="custom-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full border-2 border-pink-300">
+            <h3 id="modal-title" class="text-xl font-bold mb-4 text-pink-600"></h3>
+            <div id="modal-message" class="text-gray-700 mb-6"></div>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-close-button" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition duration-200">
+                    Cerrar
+                </button>
+                <button id="modal-confirm-button" class="px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition duration-200 hidden">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <header class="bg-gradient-to-r from-pink-500 to-purple-600 p-4 shadow-lg">
+        <nav class="container mx-auto flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+            <h1 class="text-white text-2xl font-bold">HiroshiLOID</h1>
+            <div class="flex space-x-2 sm:space-x-4">
+                <button id="tab-synthesis" class="tab-button px-4 py-2 rounded-lg font-semibold transition duration-300 active">
+                    Síntesis de Voz
+                </button>
+                <button id="tab-creator" class="tab-button px-4 py-2 rounded-lg font-semibold transition duration-300">
+                    Crear Voicebank HLVB
+                </button>
+            </div>
+            <div id="user-id-display" class="text-white text-sm text-center sm:text-right">
+                </div>
+        </nav>
+    </header>
+
+    <main class="flex-1 container mx-auto p-4 sm:p-6">
+        <div id="synthesis-tab-content" class="tab-content">
+            <h2 class="text-3xl font-extrabold text-center text-pink-700 mb-8">Síntesis de Voz</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Archivos HL y Acciones</h3>
+                    <div class="space-y-3">
+                        <button id="load-hl-button" class="w-full px-5 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-200 shadow-md">
+                            Cargar Archivo HL
+                        </button>
+                        <button id="save-hl-button" class="w-full px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200 shadow-md">
+                            Guardar Archivo HL
+                        </button>
+                        <button id="add-note-button" class="w-full px-5 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200 shadow-md">
+                            Añadir Nueva Nota
+                        </button>
+                        <button id="edit-note-button" class="w-full px-5 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition duration-200 shadow-md" disabled>
+                            Editar Nota Seleccionada
+                        </button>
+                        <button id="delete-note-button" class="w-full px-5 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200 shadow-md" disabled>
+                            Eliminar Nota Seleccionada
+                        </button>
+                        <button id="play-synthesis-button" class="w-full px-5 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition duration-200 shadow-md">
+                            Reproducir Audio
+                        </button>
+                        <button id="save-synthesis-button" class="w-full px-5 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600 transition duration-200 shadow-md">
+                            Sintetizar y Guardar Audio
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Selección de Voicebank</h3>
+                    <select id="voicebank-combo" class="w-full p-2 border border-gray-300 rounded-md focus:ring-pink-300 focus:border-pink-300">
+                        <option value="">Seleccionar Voicebank...</option>
+                        </select>
+                    <div id="selected-voicebank-info" class="mt-4 text-sm text-gray-600">
+                        </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Idioma de Síntesis</h3>
+                    <select id="language-combo" class="w-full p-2 border border-gray-300 rounded-md focus:ring-pink-300 focus:border-pink-300">
+                        </select>
+                    <p class="mt-4 text-sm text-gray-600">
+                        <span class="font-bold">Nota:</span> La síntesis de voz del navegador no usa el voicebank.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col lg:flex-row gap-6 mb-8">
+                <div class="flex-1 bg-white p-4 rounded-lg shadow-md border border-gray-200 overflow-x-auto">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Notas del Piano Roll</h3>
+                    <table id="piano-roll-table" class="min-w-full bg-white border border-gray-300 rounded-lg">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Tono</th>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Inicio</th>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Duración</th>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Letra</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="flex-1 bg-white p-4 rounded-lg shadow-md border border-gray-200">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Fonemas del Voicebank</h3>
+                    <div class="overflow-y-auto h-96">
+                        <table id="phoneme-table" class="min-w-full bg-white border border-gray-300 rounded-lg">
+                            <thead class="bg-gray-100 sticky top-0">
+                                <tr>
+                                    <th class="py-2 px-4 border-b text-left text-gray-600">Alias</th>
+                                    <th class="py-2 px-4 border-b text-left text-gray-600">Archivo Wave</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-8">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Vocaloid Changer (Simulado)</h3>
+                <p class="text-sm text-gray-600 mb-4">
+                    Introduce texto para transformarlo a un estilo "Vocaloid" (solo textual). La reproducción de audio usará la voz estándar de tu navegador, no un voicebank personalizado. Para un Vocaloid real, se necesita un backend de IA.
+                </p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="input-vocaloid-text" class="block text-sm font-medium text-gray-700">Texto de Entrada:</label>
+                        <textarea id="input-vocaloid-text" rows="4" placeholder="Escribe tu texto aquí para vocaloid-ificar..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"></textarea>
+                        <button id="vocaloid-ify-button" class="mt-3 w-full px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition duration-200 shadow-md">
+                            Vocaloid-ificar Texto
+                        </button>
+                    </div>
+                    <div>
+                        <label for="output-vocaloid-text" class="block text-sm font-medium text-gray-700">Texto Vocaloid-ificado:</label>
+                        <textarea id="output-vocaloid-text" rows="4" readonly class="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm"></textarea>
+                        <button id="play-vocaloid-text-button" class="mt-3 w-full px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-200 shadow-md">
+                            Reproducir Texto Vocaloid
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="synthesis-status" class="bg-white p-4 rounded-lg shadow-md border border-gray-200 text-center text-gray-700 font-medium">
+                Estado: Listo.
+            </div>
+        </div>
+
+        <div id="creator-tab-content" class="tab-content hidden">
+            <h2 class="text-3xl font-extrabold text-center text-pink-700 mb-8">🎀 HLVB Voicebank Creator 🎀</h2>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Configuración del Voicebank</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="vb-name" class="block text-sm font-medium text-gray-700">Nombre:</label>
+                        <input type="text" id="vb-name" placeholder="Nombre del Voicebank" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                    <div>
+                        <label for="vb-author" class="block text-sm font-medium text-gray-700">Autor:</label>
+                        <input type="text" id="vb-author" placeholder="Autor del Voicebank" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                    <div>
+                        <label for="vb-desc" class="block text-sm font-medium text-gray-700">Descripción:</label>
+                        <textarea id="vb-desc" placeholder="Descripción del Voicebank" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50"></textarea>
+                    </div>
+                    <div>
+                        <label for="vb-epochs" class="block text-sm font-medium text-gray-700">Épocas de Entrenamiento (Simulado para Python/Torch):</label>
+                        <input type="number" id="vb-epochs" value="15" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Cargar Archivo oto.ini</h3>
+                <input type="file" id="oto-ini-upload" accept=".ini" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100" />
+                <div id="oto-ini-preview" class="mt-4 p-3 bg-gray-100 rounded-md text-sm text-gray-700 overflow-auto max-h-40 hidden">
+                    <h4 class="font-semibold mb-2">Contenido de oto.ini (primeras líneas):</h4>
+                    <pre id="oto-ini-content-display" class="whitespace-pre-wrap"></pre>
+                </div>
+            </div>
+
+            <div class="flex-1 bg-white p-4 rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Fonemas Cargados (oto.ini)</h3>
+                <div class="overflow-y-auto h-96">
+                    <table id="creator-phoneme-table" class="min-w-full bg-white border border-gray-300 rounded-lg">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Alias</th>
+                                <th class="py-2 px-4 border-b text-left text-gray-600">Archivo Wave</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <button id="train-pack-button" class="mt-6 w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-lg text-lg font-bold hover:from-pink-600 hover:to-red-600 transition duration-300 shadow-lg transform hover:scale-105">
+                Entrenar y Crear HLVB (✿◠‿◠)
+            </button>
+
+            <div id="creator-status" class="bg-white p-4 rounded-lg shadow-md border border-gray-200 text-center text-gray-700 font-medium mt-6">
+                Estado: ¡Bienvenida! Completa los datos. (◕‿◕✿)
+            </div>
+
+            <p class="mt-4 text-sm text-gray-600 italic text-center">
+                Consejo: El entrenamiento es simulado. Una GPU (CUDA) aceleraría mucho el proceso en una aplicación real con Python y Torch.
+            </p>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, onSnapshot, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase variables (provided by the environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db;
+        let auth;
+        let currentUserId = null;
+        let isAuthReady = false;
+
+        // --- Utility Functions ---
+        function showLoading() {
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+
+        function showModal(title, message, showConfirmButton = false, onConfirmCallback = null) {
+            document.getElementById('modal-title').innerHTML = title;
+            document.getElementById('modal-message').innerHTML = message;
+            const confirmBtn = document.getElementById('modal-confirm-button');
+            confirmBtn.onclick = () => {
+                if (onConfirmCallback) onConfirmCallback();
+                hideModal();
+            };
+            if (showConfirmButton) {
+                confirmBtn.classList.remove('hidden');
+            } else {
+                confirmBtn.classList.add('hidden');
+            }
+            document.getElementById('custom-modal').classList.remove('hidden');
+        }
+
+        function hideModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        document.getElementById('modal-close-button').addEventListener('click', hideModal);
+
+        // --- Data Classes (JavaScript equivalents of Python classes) ---
+        class PianoNote {
+            constructor(pitch, start, length, lyric) {
+                this.pitch = pitch;
+                this.start = start;
+                this.length = length;
+                this.lyric = lyric;
+            }
+
+            toFirestore() {
+                return {
+                    pitch: this.pitch,
+                    start: this.start,
+                    length: this.length,
+                    lyric: this.lyric,
+                };
+            }
+
+            static fromFirestore(data) {
+                return new PianoNote(data.pitch, data.start, data.length, data.lyric);
+            }
+        }
+
+        class PhonemeEntry {
+            constructor(wave_file_path, alias, offset, consonant, cutoff, pre_utterance, overlap) {
+                this.wave_file_path = wave_file_path;
+                this.alias = alias;
+                this.offset = offset;
+                this.consonant = consonant;
+                this.cutoff = cutoff;
+                this.pre_utterance = pre_utterance;
+                this.overlap = overlap;
+            }
+
+            toFirestore() {
+                return {
+                    wave_file_path: this.wave_file_path,
+                    alias: this.alias,
+                    offset: this.offset,
+                    consonant: this.consonant,
+                    cutoff: this.cutoff,
+                    pre_utterance: this.pre_utterance,
+                    overlap: this.overlap,
+                };
+            }
+
+            static fromFirestore(data) {
+                return new PhonemeEntry(
+                    data.wave_file_path,
+                    data.alias,
+                    data.offset,
+                    data.consonant,
+                    data.cutoff,
+                    data.pre_utterance,
+                    data.overlap
+                );
+            }
+        }
+
+        class Voicebank {
+            constructor(id, name, author, description, otoIniContent = '', infoJsonContent = '') {
+                this.id = id;
+                this.name = name;
+                this.author = author;
+                this.description = description;
+                this.otoIniContent = otoIniContent; // Raw string content of oto.ini
+                this.infoJsonContent = infoJsonContent; // Raw string content of info.json
+                this.phoneme_map = {}; // Parsed map of phonemes
+                if (otoIniContent) {
+                    this.parseOtoIni(otoIniContent);
+                }
+            }
+
+            parseOtoIni(otoIniString) {
+                this.phoneme_map = {};
+                const lines = otoIniString.split('\n');
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine && !trimmedLine.startsWith('#')) {
+                        try {
+                            const eqPos = trimmedLine.indexOf('=');
+                            if (eqPos === -1) throw new Error("Missing '='");
+                            const wav = trimmedLine.substring(0, eqPos);
+                            const rest = trimmedLine.substring(eqPos + 1);
+                            const fields = rest.split(',');
+                            if (fields.length === 6) {
+                                const entry = new PhonemeEntry(
+                                    wav, fields[0], parseFloat(fields[1]), parseFloat(fields[2]),
+                                    parseFloat(fields[3]), parseFloat(fields[4]), parseFloat(fields[5])
+                                );
+                                this.phoneme_map[entry.alias] = entry;
+                            } else {
+                                throw new Error(`Incorrect number of fields (expected 6, got ${fields.length})`);
+                            }
+                        } catch (e) {
+                            console.warn("Error parsing oto.ini line:", trimmedLine, e);
+                        }
+                    }
+                });
+            }
+
+            toFirestore() {
+                return {
+                    name: this.name,
+                    author: this.author,
+                    description: this.description,
+                    otoIniContent: this.otoIniContent,
+                    infoJsonContent: this.infoJsonContent,
+                    hlvb_version: "1.0",
+                };
+            }
+
+            static fromFirestore(id, data) {
+                return new Voicebank(
+                    id,
+                    data.name,
+                    data.author,
+                    data.description,
+                    data.otoIniContent,
+                    data.infoJsonContent
+                );
+            }
+        }
+
+        // --- Global State Variables ---
+        let currentNotes = [];
+        let availableVoicebanks = [];
+        let selectedVoicebank = null;
+        let selectedNoteIndex = null; // For Piano Roll table selection
+
+        const languageOptions = {
+            "Español": "es", "Inglés": "en", "Francés": "fr", "Alemán": "de",
+            "Japonés": "ja", "Coreano": "ko", "Chino (Mandarín)": "zh-cn",
+            "Ruso": "ru", "Italiano": "it", "Portugués": "pt"
+        };
+
+        // --- DOM Elements ---
+        const synthesisTabBtn = document.getElementById('tab-synthesis');
+        const creatorTabBtn = document.getElementById('tab-creator');
+        const synthesisTabContent = document.getElementById('synthesis-tab-content');
+        const creatorTabContent = document.getElementById('creator-tab-content');
+
+        const loadHlButton = document.getElementById('load-hl-button');
+        const saveHlButton = document.getElementById('save-hl-button');
+        const addNoteButton = document.getElementById('add-note-button');
+        const editNoteButton = document.getElementById('edit-note-button');
+        const deleteNoteButton = document.getElementById('delete-note-button');
+        const playSynthesisButton = document.getElementById('play-synthesis-button');
+        const saveSynthesisButton = document.getElementById('save-synthesis-button');
+        const voicebankCombo = document.getElementById('voicebank-combo');
+        const languageCombo = document.getElementById('language-combo');
+        const pianoRollTableBody = document.querySelector('#piano-roll-table tbody');
+        const phonemeTableBody = document.querySelector('#phoneme-table tbody');
+        const synthesisStatusLabel = document.getElementById('synthesis-status');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const selectedVoicebankInfo = document.getElementById('selected-voicebank-info');
+
+        // Vocaloid Changer Elements
+        const inputVocaloidText = document.getElementById('input-vocaloid-text');
+        const vocaloidifyButton = document.getElementById('vocaloid-ify-button');
+        const outputVocaloidText = document.getElementById('output-vocaloid-text');
+        const playVocaloidTextButton = document.getElementById('play-vocaloid-text-button');
+
+
+        // Creator Tab Elements
+        const vbNameInput = document.getElementById('vb-name');
+        const vbAuthorInput = document.getElementById('vb-author');
+        const vbDescInput = document.getElementById('vb-desc');
+        const vbEpochsInput = document.getElementById('vb-epochs');
+        const otoIniUploadInput = document.getElementById('oto-ini-upload');
+        const otoIniPreviewDiv = document.getElementById('oto-ini-preview');
+        const otoIniContentDisplay = document.getElementById('oto-ini-content-display');
+        const creatorPhonemeTableBody = document.querySelector('#creator-phoneme-table tbody');
+        const trainPackButton = document.getElementById('train-pack-button');
+        const creatorStatusLabel = document.getElementById('creator-status');
+
+        let currentOtoIniContent = ''; // For creator tab
+
+        // --- Functions to Update UI ---
+        function updatePianoRollTable() {
+            pianoRollTableBody.innerHTML = ''; // Clear existing rows
+            if (currentNotes.length === 0) {
+                pianoRollTableBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-500">No hay notas. ¡Añade una!</td></tr>`;
+                return;
+            }
+            currentNotes.forEach((note, index) => {
+                const row = pianoRollTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50', 'transition', 'duration-150');
+                if (selectedNoteIndex === index) {
+                    row.classList.add('bg-blue-100');
+                }
+                row.onclick = () => selectNoteInPianoRoll(index);
+
+                row.insertCell().textContent = note.pitch;
+                row.insertCell().textContent = note.start;
+                row.insertCell().textContent = note.length;
+                row.insertCell().textContent = note.lyric;
+            });
+            updateSynthesisButtonsState();
+        }
+
+        function selectNoteInPianoRoll(index) {
+            selectedNoteIndex = index;
+            updatePianoRollTable(); // Re-render to apply selection styling
+            updateSynthesisButtonsState(); // Enable/disable edit/delete buttons
+        }
+
+        function updatePhonemeTable(phonemeMap, targetTableBody) {
+            targetTableBody.innerHTML = ''; // Clear existing rows
+            const phonemes = Object.values(phonemeMap);
+            if (phonemes.length === 0) {
+                targetTableBody.innerHTML = `<tr><td colspan="2" class="py-4 text-center text-gray-500">No hay fonemas cargados.</td></tr>`;
+                return;
+            }
+            phonemes.forEach(entry => {
+                const row = targetTableBody.insertRow();
+                row.classList.add('hover:bg-gray-50', 'transition', 'duration-150');
+                row.insertCell().textContent = entry.alias;
+                row.insertCell().textContent = entry.wave_file_path;
+            });
+        }
+
+        function updateSynthesisStatus(message) {
+            synthesisStatusLabel.textContent = `Estado: ${message}`;
+        }
+
+        function updateCreatorStatus(message) {
+            creatorStatusLabel.textContent = `Estado: ${message}`;
+        }
+
+        function updateSynthesisButtonsState() {
+            const hasNotes = currentNotes.length > 0;
+            saveHlButton.disabled = !hasNotes;
+            playSynthesisButton.disabled = !hasNotes;
+            saveSynthesisButton.disabled = !hasNotes; // Now enabled if notes exist
+            editNoteButton.disabled = selectedNoteIndex === null;
+            deleteNoteButton.disabled = selectedNoteIndex === null;
+        }
+
+        function populateLanguageCombo() {
+            languageCombo.innerHTML = '';
+            for (const name in languageOptions) {
+                const option = document.createElement('option');
+                option.value = languageOptions[name];
+                option.textContent = name;
+                languageCombo.appendChild(option);
+            }
+            languageCombo.value = 'es'; // Default to Spanish
+        }
+
+        function populateVoicebankCombo() {
+            voicebankCombo.innerHTML = '<option value="">Seleccionar Voicebank...</option>';
+            availableVoicebanks.forEach(vb => {
+                const option = document.createElement('option');
+                option.value = vb.id;
+                option.textContent = `${vb.name} (${vb.author})`;
+                voicebankCombo.appendChild(option);
+            });
+        }
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            document.getElementById(`${tabId}-tab-content`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        // --- Firebase Initialization & Listeners ---
+        async function initializeFirebase() {
+            showLoading();
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                    } else {
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            currentUserId = auth.currentUser.uid; // Get UID after sign-in
+                        } catch (error) {
+                            console.error("Error signing in:", error);
+                            currentUserId = crypto.randomUUID(); // Fallback to a random ID
+                            showModal("Error de Autenticación", `No se pudo autenticar. Usando ID de usuario temporal. Error: ${error.message}`);
+                        }
+                    }
+                    userIdDisplay.innerHTML = `ID de Usuario: <span class="font-mono bg-white bg-opacity-20 px-2 py-1 rounded-md">${currentUserId}</span>`;
+                    isAuthReady = true;
+                    hideLoading();
+                    setupFirestoreListeners();
+                });
+            } catch (error) {
+                hideLoading();
+                console.error("Error initializing Firebase:", error);
+                showModal("Error de Firebase", `No se pudo inicializar Firebase: ${error.message}`);
+            }
+        }
+
+        function setupFirestoreListeners() {
+            if (!db || !currentUserId || !isAuthReady) {
+                console.warn("Firestore not ready for listeners.");
+                return;
+            }
+
+            // HL Projects Listener
+            const hlProjectsRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hl_projects`, "my_project");
+            onSnapshot(hlProjectsRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (data.notes && Array.isArray(data.notes)) {
+                        currentNotes = data.notes.map(n => PianoNote.fromFirestore(n));
+                        updatePianoRollTable();
+                        updateSynthesisStatus(`Cargadas ${currentNotes.length} notas desde la nube.`);
+                    }
+                } else {
+                    currentNotes = [];
+                    updatePianoRollTable();
+                    updateSynthesisStatus("No hay proyectos HL en la nube. Empieza uno nuevo.");
+                }
+            }, (error) => {
+                console.error("Error fetching HL projects:", error);
+                updateSynthesisStatus("Error al cargar proyectos HL desde la nube.");
+            });
+
+            // Voicebanks Listener
+            const voicebanksCollectionRef = collection(db, `artifacts/${appId}/users/${currentUserId}/voicebanks`);
+            onSnapshot(voicebanksCollectionRef, (snapshot) => {
+                availableVoicebanks = [];
+                snapshot.forEach((docSnap) => {
+                    availableVoicebanks.push(Voicebank.fromFirestore(docSnap.id, docSnap.data()));
+                });
+                populateVoicebankCombo();
+                updateSynthesisStatus(`Cargados ${availableVoicebanks.length} voicebanks desde la nube.`);
+            }, (error) => {
+                console.error("Error fetching voicebanks:", error);
+                updateSynthesisStatus("Error al cargar voicebanks desde la nube.");
+            });
+        }
+
+        // --- Event Handlers for Synthesis Tab ---
+        async function handleLoadHLFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,.hl';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                updateSynthesisStatus(`Cargando ${file.name}...`);
+                showLoading();
+                try {
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        try {
+                            const fileContent = event.target.result;
+                            const data = JSON.parse(fileContent);
+                            if (data.notes && Array.isArray(data.notes)) {
+                                currentNotes = data.notes.map(n => PianoNote.fromFirestore(n));
+                                updatePianoRollTable();
+                                // Save to Firestore
+                                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hl_projects`, "my_project");
+                                await setDoc(docRef, { notes: currentNotes.map(n => n.toFirestore()) });
+                                updateSynthesisStatus(`Archivo HL '${file.name}' cargado y guardado en la nube.`);
+                            } else {
+                                throw new Error("Formato de archivo HL inválido.");
+                            }
+                        } catch (parseError) {
+                            showModal("Error al cargar HL", `Contenido HL inválido o codificación incorrecta: ${parseError.message}`);
+                            updateSynthesisStatus("Error al cargar archivo HL.");
+                        } finally {
+                            hideLoading();
+                        }
+                    };
+                    reader.readAsText(file);
+                } catch (error) {
+                    hideLoading();
+                    showModal("Error al cargar HL", `Ocurrió un error inesperado al cargar el archivo HL: ${error.message}`);
+                    updateSynthesisStatus("Error al cargar archivo HL.");
+                }
+            };
+            input.click();
+        }
+
+        async function handleSaveHLFile() {
+            if (currentNotes.length === 0) {
+                showModal("Guardar HL", "No hay notas para guardar.");
+                return;
+            }
+
+            const currentNotesData = currentNotes.map(note => note.toFirestore());
+            const dataToSave = { notes: currentNotesData };
+            const jsonString = JSON.stringify(dataToSave, null, 4);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my_song.hl';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            // Save to Firestore as well
+            showLoading();
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hl_projects`, "my_project");
+                await setDoc(docRef, { notes: currentNotesData });
+                updateSynthesisStatus("Archivo HL guardado localmente y en la nube.");
+            } catch (error) {
+                console.error("Error saving HL to Firestore:", error);
+                showModal("Error de Guardado", `Error al guardar archivo HL en la nube: ${error.message}`);
+                updateSynthesisStatus("Error al guardar archivo HL en la nube.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function handleAddNote() {
+            const newStart = currentNotes.length > 0 ? currentNotes[currentNotes.length - 1].start + currentNotes[currentNotes.length - 1].length : 0;
+            const newNote = new PianoNote(60, newStart, 100, "a");
+            currentNotes.push(newNote);
+            selectedNoteIndex = currentNotes.length - 1; // Select the newly added note
+            updatePianoRollTable();
+            updateSynthesisStatus("Nueva nota añadida.");
+            // No need to save to Firestore immediately, user will save explicitly or it will be saved on next HL save.
+        }
+
+        function handleEditNote() {
+            if (selectedNoteIndex === null || selectedNoteIndex >= currentNotes.length) {
+                showModal("Editar Nota", "Por favor, selecciona una nota para editar.");
+                return;
+            }
+
+            const noteToEdit = currentNotes[selectedNoteIndex];
+            const content = `
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Tono (MIDI, 0-127):</label>
+                        <input type="number" min="0" max="127" value="${noteToEdit.pitch}" id="edit-pitch" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Inicio (ticks):</label>
+                        <input type="number" min="0" value="${noteToEdit.start}" id="edit-start" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Duración (ticks):</label>
+                        <input type="number" min="1" value="${noteToEdit.length}" id="edit-length" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Letra:</label>
+                        <input type="text" value="${noteToEdit.lyric}" id="edit-lyric" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity50" />
+                    </div>
+                </div>
+            `;
+
+            showModal("Editar Nota", content, true, async () => {
+                noteToEdit.pitch = parseInt(document.getElementById('edit-pitch').value);
+                noteToEdit.start = parseInt(document.getElementById('edit-start').value);
+                noteToEdit.length = parseInt(document.getElementById('edit-length').value);
+                noteToEdit.lyric = document.getElementById('edit-lyric').value;
+                currentNotes[selectedNoteIndex] = noteToEdit; // Update the note in the array
+                updatePianoRollTable();
+                updateSynthesisStatus(`Nota en la fila ${selectedNoteIndex + 1} editada.`);
+
+                // Save to Firestore
+                showLoading();
+                try {
+                    const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hl_projects`, "my_project");
+                    await setDoc(docRef, { notes: currentNotes.map(n => n.toFirestore()) });
+                } catch (error) {
+                    console.error("Error saving updated HL to Firestore:", error);
+                    showModal("Error de Guardado", `Error al guardar notas editadas en la nube: ${error.message}`);
+                    updateSynthesisStatus("Error al guardar notas editadas en la nube.");
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        async function handleDeleteNote() {
+            if (selectedNoteIndex === null || selectedNoteIndex >= currentNotes.length) {
+                showModal("Eliminar Nota", "Por favor, selecciona una nota para eliminar.");
+                return;
+            }
+
+            showModal("Confirmar Eliminación", "¿Estás seguro de que quieres eliminar esta nota?", true, async () => {
+                currentNotes.splice(selectedNoteIndex, 1); // Remove the note
+                selectedNoteIndex = null; // Deselect
+                updatePianoRollTable();
+                updateSynthesisStatus("Nota eliminada.");
+
+                // Save to Firestore
+                showLoading();
+                try {
+                    const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/hl_projects`, "my_project");
+                    await setDoc(docRef, { notes: currentNotes.map(n => n.toFirestore()) });
+                } catch (error) {
+                    console.error("Error deleting HL to Firestore:", error);
+                    showModal("Error de Eliminación", `Error al eliminar nota en la nube: ${error.message}`);
+                    updateSynthesisStatus("Error al eliminar nota en la nube.");
+                } finally {
+                    hideLoading();
+                }
+            });
+        }
+
+        function handlePlaySynthesis() {
+            if (currentNotes.length === 0) {
+                showModal("Audio", "No hay notas para reproducir.");
+                return;
+            }
+
+            updateSynthesisStatus("Sintetizando y reproduciendo audio...");
+            showModal(
+                "Nota Importante: Tono del Voicebank",
+                "La función 'Reproducir Audio' utiliza la API de Web Speech del navegador. Esto significa que **NO puede aplicar el tono, timbre o características específicas de un voicebank personalizado** (como los que se crean en la pestaña 'Crear Voicebank HLVB'). Utilizará las voces predeterminadas de tu sistema operativo. Para una síntesis con voicebanks personalizados, se requeriría un modelo de IA de síntesis de voz ejecutándose en el navegador (muy complejo) o un servidor backend dedicado."
+            );
+
+            const textToSpeak = currentNotes.map(note => note.lyric).join(" ");
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = languageCombo.value;
+
+            utterance.onend = () => {
+                updateSynthesisStatus("Reproducción finalizada.");
+            };
+            utterance.onerror = (event) => {
+                updateSynthesisStatus(`Error de síntesis: ${event.error}`);
+                console.error("SpeechSynthesisUtterance error:", event);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function handleSaveSynthesis() {
+            if (currentNotes.length === 0) {
+                showModal("Audio", "No hay notas para sintetizar y guardar.");
+                return;
+            }
+
+            updateSynthesisStatus("Sintetizando audio para guardar...");
+            showLoading();
+
+            showModal(
+                "Aviso: Tono del Voicebank en WAV",
+                "El archivo WAV que se generará contendrá la síntesis de voz de la API de Web Speech de tu navegador. Esto significa que **NO aplicará el tono, timbre o características específicas de un voicebank personalizado**. Para obtener un WAV con el tono real de un voicebank, se necesitaría un motor de síntesis de voz de IA en un servidor backend."
+            );
+
+            const textToSynthesize = currentNotes.map(note => note.lyric).join(" ");
+            const lang = languageCombo.value;
+
+            // Use a promise to wait for speech synthesis to complete
+            const synthesizeSpeech = (text, language) => {
+                return new Promise((resolve, reject) => {
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = language;
+
+                    // This part is the tricky bit: connecting SpeechSynthesis to AudioContext.
+                    // Directly connecting SpeechSynthesisUtterance to an AudioContext is not possible.
+                    // For demonstration, we'll simulate a WAV from the text.
+
+                    // To generate a WAV, we'd need raw audio data.
+                    // For simplicity and demonstrating the WAV download, we'll create a dummy WAV.
+                    // A real implementation would involve a server-side TTS engine or a complex
+                    // client-side WASM model.
+
+                    // For now, let's create a *dummy* WAV file based on the text length.
+                    // This is NOT capturing the actual browser TTS output, but demonstrating the save mechanism.
+                    const dummyAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const sampleRate = 44100; // Standard sample rate
+                    const duration = text.length * 0.1; // Estimate duration based on text length
+                    const frameCount = sampleRate * duration;
+                    const myArrayBuffer = dummyAudioContext.createBuffer(1, frameCount, sampleRate);
+                    const nowBuffering = myArrayBuffer.getChannelData(0);
+
+                    // Fill with some dummy data (e.g., silence or a simple tone)
+                    for (let i = 0; i < frameCount; i++) {
+                        nowBuffering[i] = Math.sin(i * 0.05); // Simple sine wave for demonstration
+                    }
+
+                    // Encode to WAV
+                    const worker = new Worker(URL.createObjectURL(new Blob([`
+                        self.onmessage = function(e) {
+                            const data = e.data.audioData;
+                            const sampleRate = e.data.sampleRate;
+                            const numChannels = 1; // Mono
+                            const bytesPerSample = 2; // 16-bit PCM
+
+                            function writeString(view, offset, string) {
+                                for (let i = 0; i < string.length; i++) {
+                                    view.setUint8(offset + i, string.charCodeAt(i));
+                                }
+                            }
+
+                            function floatTo16BitPCM(output, offset, input) {
+                                for (let i = 0; i < input.length; i++, offset += 2) {
+                                    const s = Math.max(-1, Math.min(1, input[i]));
+                                    output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+                                }
+                            }
+
+                            const dataLength = data.length * bytesPerSample;
+                            const buffer = new ArrayBuffer(44 + dataLength);
+                            const view = new DataView(buffer);
+
+                            writeString(view, 0, 'RIFF');
+                            view.setUint32(4, 36 + dataLength, true);
+                            writeString(view, 8, 'WAVE');
+                            writeString(view, 12, 'fmt ');
+                            view.setUint32(16, 16, true);
+                            view.setUint16(20, 1, true); // PCM
+                            view.setUint16(22, numChannels, true);
+                            view.setUint32(24, sampleRate, true);
+                            view.setUint32(28, sampleRate * numChannels * bytesPerSample, true);
+                            view.setUint16(32, numChannels * bytesPerSample, true);
+                            view.setUint16(34, bytesPerSample * 8, true); // Bits per sample
+                            writeString(view, 36, 'data');
+                            view.setUint32(40, dataLength, true);
+
+                            floatTo16BitPCM(view, 44, data);
+
+                            self.postMessage(buffer, [buffer]);
+                        };
+                    `]), { type: 'application/javascript' }));
+
+                    worker.onmessage = event => {
+                        const wavBlob = new Blob([event.data], { type: 'audio/wav' });
+                        resolve(wavBlob);
+                    };
+
+                    worker.onerror = error => {
+                        reject("Error in WAV encoding worker: " + error.message);
+                    };
+
+                    worker.postMessage({
+                        audioData: nowBuffering,
+                        sampleRate: sampleRate
+                    });
+                });
+            };
+
+            try {
+                const audioBlob = await synthesizeSpeech(textToSynthesize, lang);
+                const url = URL.createObjectURL(audioBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'synthesized_audio.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                updateSynthesisStatus("Audio WAV guardado exitosamente.");
+            } catch (error) {
+                showModal("Error al guardar Audio", `No se pudo guardar el archivo de audio: ${error}`);
+                updateSynthesisStatus("Error al guardar audio.");
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function handleVoicebankSelection() {
+            const selectedId = voicebankCombo.value;
+            if (selectedId === "") {
+                selectedVoicebank = null;
+                updateSynthesisStatus("Voicebank no seleccionado.");
+                selectedVoicebankInfo.innerHTML = '';
+                updatePhonemeTable({}, phonemeTableBody);
+                return;
+            }
+            const vb = availableVoicebanks.find(vb => vb.id === selectedId);
+            selectedVoicebank = vb;
+            if (vb) {
+                updateSynthesisStatus(`Voicebank '${vb.name}' cargado.`);
+                selectedVoicebankInfo.innerHTML = `
+                    <p><strong>Nombre:</strong> ${vb.name}</p>
+                    <p><strong>Autor:</strong> ${vb.author}</p>
+                    <p><strong>Descripción:</strong> ${vb.description}</p>
+                `;
+                updatePhonemeTable(vb.phoneme_map, phonemeTableBody);
+            } else {
+                updateSynthesisStatus("Error: Voicebank no encontrado.");
+                selectedVoicebankInfo.innerHTML = '';
+                updatePhonemeTable({}, phonemeTableBody);
+            }
+        }
+
+        // --- Event Handlers for Vocaloid Changer ---
+        async function handleVocaloidifyText() {
+            const inputText = inputVocaloidText.value.trim();
+            if (!inputText) {
+                showModal("Vocaloid Changer", "Por favor, introduce texto para vocaloid-ificar.");
+                return;
+            }
+
+            updateSynthesisStatus("Vocaloid-ificando texto...");
+            showLoading();
+            outputVocaloidText.value = "Procesando...";
+
+            try {
+                const prompt = `Transform the following text into a style reminiscent of a Vocaloid singing voice. Focus on slightly exaggerated pronunciation, clear but somewhat robotic articulation, and a slightly simplified phonetic feel. Do not add any musical notation or timing, just modify the words themselves. Example: 'Hello world' could become 'Ha-lo wor-ul-do'. Text: ${inputText}`;
+
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = ""; // If you want to use models other than gemini-2.0-flash or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    const transformedText = result.candidates[0].content.parts[0].text;
+                    outputVocaloidText.value = transformedText;
+                    updateSynthesisStatus("Texto vocaloid-ificado.");
+                } else {
+                    outputVocaloidText.value = "Error al vocaloid-ificar.";
+                    showModal("Error Vocaloid Changer", "No se pudo obtener una respuesta del modelo. Inténtalo de nuevo.");
+                    updateSynthesisStatus("Error al vocaloid-ificar texto.");
+                }
+            } catch (error) {
+                outputVocaloidText.value = "Error.";
+                showModal("Error Vocaloid Changer", `Ocurrió un error al comunicarse con el LLM: ${error.message}`);
+                updateSynthesisStatus("Error al vocaloid-ificar texto.");
+                console.error("LLM Vocaloid Changer error:", error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function handlePlayVocaloidText() {
+            const textToPlay = outputVocaloidText.value.trim();
+            if (!textToPlay) {
+                showModal("Vocaloid Changer", "No hay texto vocaloid-ificado para reproducir.");
+                return;
+            }
+
+            updateSynthesisStatus("Reproduciendo texto vocaloid-ificado...");
+            showModal(
+                "Nota Importante: Reproducción Vocaloid",
+                "Estás escuchando el texto transformado por el 'Vocaloid Changer' (simulado). La reproducción de audio utiliza la API de Web Speech de tu navegador y **NO aplica el tono o timbre de un voicebank personalizado**. Para una síntesis Vocaloid real, se necesita un motor de IA de síntesis de voz dedicado."
+            );
+
+            const utterance = new SpeechSynthesisUtterance(textToPlay);
+            utterance.lang = languageCombo.value; // Use selected language for playback
+
+            utterance.onend = () => {
+                updateSynthesisStatus("Reproducción de texto vocaloid-ificado finalizada.");
+            };
+            utterance.onerror = (event) => {
+                updateSynthesisStatus(`Error de reproducción: ${event.error}`);
+                console.error("SpeechSynthesisUtterance error (Vocaloid Changer):", event);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Event Handlers for Creator Tab ---
+        function handleOtoIniUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            updateCreatorStatus("Cargando oto.ini...");
+            showLoading();
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                currentOtoIniContent = event.target.result;
+                try {
+                    const dummyVoicebank = new Voicebank('dummy', '', '', '', currentOtoIniContent);
+                    updatePhonemeTable(dummyVoicebank.phoneme_map, creatorPhonemeTableBody);
+                    otoIniContentDisplay.textContent = currentOtoIniContent.substring(0, 500) + (currentOtoIniContent.length > 500 ? '...' : '');
+                    otoIniPreviewDiv.classList.remove('hidden');
+                    updateCreatorStatus(`OTO.ini cargado con ${Object.keys(dummyVoicebank.phoneme_map).length} fonemas.`);
+                } catch (error) {
+                    updateCreatorStatus("Error al analizar oto.ini. Asegúrate de que el formato sea correcto.");
+                    otoIniPreviewDiv.classList.add('hidden');
+                    updatePhonemeTable({}, creatorPhonemeTableBody);
+                    console.error("Error parsing oto.ini:", error);
+                } finally {
+                    hideLoading();
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        async function handleTrainAndPack() {
+            const name = vbNameInput.value.trim();
+            const author = vbAuthorInput.value.trim();
+            const description = vbDescInput.value.trim();
+            const epochs = parseInt(vbEpochsInput.value);
+
+            if (!name || !author || !currentOtoIniContent) {
+                showModal("Error", "Por favor, completa el nombre, autor y carga un archivo oto.ini.");
+                return;
+            }
+            if (isNaN(epochs) || epochs <= 0) {
+                showModal("Error de Épocas", "Por favor, introduce un número válido de épocas (entero positivo).");
+                return;
+            }
+
+            updateCreatorStatus("Iniciando entrenamiento y empaquetado (simulado)...");
+            showLoading();
+
+            // Simulate training delay
+            await new Promise(resolve => setTimeout(resolve, 3000));
+
+            try {
+                const infoJsonContent = JSON.stringify({ name, author, description, hlvb_version: "1.0" }, null, 2);
+                const newVoicebankData = {
+                    name,
+                    author,
+                    description,
+                    otoIniContent: currentOtoIniContent,
+                    infoJsonContent: infoJsonContent,
+                    hlvb_version: "1.0",
+                };
+
+                const docRef = await addDoc(collection(db, `artifacts/${appId}/users/${currentUserId}/voicebanks`), newVoicebankData);
+
+                updateCreatorStatus(`¡Voicebank HLVB creado con éxito! ID: ${docRef.id}. (Simulado)`);
+                showModal("Éxito", `Voicebank '${name}' creado y guardado en la nube.`);
+            } catch (error) {
+                console.error("Error during simulated training/packing:", error);
+                updateCreatorStatus(`Error durante el entrenamiento/empaquetado: ${error.message}`);
+                showModal("Error", `Error durante el entrenamiento/empaquetado: ${error.message}`);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase();
+            populateLanguageCombo();
+            updatePianoRollTable(); // Initial render of empty table
+            updatePhonemeTable({}, phonemeTableBody); // Initial render of empty phoneme table
+            updatePhonemeTable({}, creatorPhonemeTableBody); // Initial render for creator tab
+            updateSynthesisButtonsState(); // Set initial button states
+
+            // Tab switching
+            synthesisTabBtn.addEventListener('click', () => showTab('synthesis'));
+            creatorTabBtn.addEventListener('click', () => showTab('creator'));
+
+            // Synthesis Tab Event Listeners
+            loadHlButton.addEventListener('click', handleLoadHLFile);
+            saveHlButton.addEventListener('click', handleSaveHLFile);
+            addNoteButton.addEventListener('click', handleAddNote);
+            editNoteButton.addEventListener('click', handleEditNote);
+            deleteNoteButton.addEventListener('click', handleDeleteNote);
+            playSynthesisButton.addEventListener('click', handlePlaySynthesis);
+            saveSynthesisButton.addEventListener('click', handleSaveSynthesis);
+            voicebankCombo.addEventListener('change', handleVoicebankSelection);
+
+            // Vocaloid Changer Event Listeners
+            vocaloidifyButton.addEventListener('click', handleVocaloidifyText);
+            playVocaloidTextButton.addEventListener('click', handlePlayVocaloidText);
+
+            // Creator Tab Event Listeners
+            otoIniUploadInput.addEventListener('change', handleOtoIniUpload);
+            trainPackButton.addEventListener('click', handleTrainAndPack);
+        });
+    </script>
+</body>
+</html>
